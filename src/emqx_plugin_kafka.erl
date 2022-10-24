@@ -124,7 +124,10 @@ on_client_disconnected(ClientInfo = #{clientid := ClientId}, ReasonCode, ConnInf
     {timestamp, Now},
     {online, Online}
   ],
-  produce_kafka_payload(Payload),
+  Topic = <<"/d/settings/s000001">>,
+  %%Payload = Message#message.payload,  
+  %%produce_kafka_payload(Payload),
+  get_kafka_topic_produce(Topic,Payload),
   ok.
 
 on_client_authenticate(_ClientInfo = #{clientid := ClientId}, Result, _Env) ->
@@ -172,6 +175,9 @@ on_message_dropped(#message{topic = <<"$SYS/", _/binary>>}, _By, _Reason, _Env) 
 on_message_dropped(Message, _By = #{node := Node}, Reason, _Env) ->
   ?LOG_INFO("[KAFKA PLUGIN]Message dropped by node ~s due to ~s: ~s~n",
     [Node, Reason, emqx_message:format(Message)]),
+  Topic = Message#message.topic,
+  Payload = Message#message.payload,  
+  get_kafka_topic_produce(Topic,Payload),
   ok.
 
 
@@ -202,7 +208,11 @@ on_message_delivered(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
     {cluster_node, node()},
     {ts, Timestamp}
   ],
-  produce_kafka_payload(Content),
+
+%%  Topic = Message#message.topic,
+  Payload = Message#message.payload,
+  get_kafka_topic_produce(Topic, Payload),
+%%  produce_kafka_payload(Content),
   ok.
 
 on_message_acked(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
@@ -334,6 +344,54 @@ unload() ->
   emqx:unhook('message.delivered', {?MODULE, on_message_delivered}),
   emqx:unhook('message.acked', {?MODULE, on_message_acked}),
   emqx:unhook('message.dropped', {?MODULE, on_message_dropped}).
+
+
+get_kafka_topic_produce(Topic, Message) ->
+  ?LOG_INFO("[KAFKA PLUGIN]Kafka topic = ~s~n", [Topic]),
+  TopicPrefix = string:left(binary_to_list(Topic),3),
+  TlinkFlag = string:equal(TopicPrefix, <<"/d/">>),
+%%  TlinkFlag = string:equal(TopicPrefix, <<"tlink/">>),
+  if
+    TlinkFlag == true ->
+      TopicStr = binary_to_list(Topic),
+      SettingsIndex = string:str(TopicStr,"settings"),
+      EventsIndex = string:str(TopicStr,"events"),
+%%      OtaIndex = string:str(TopicStr,"ota"),
+%%      SubRegisterIndex = string:str(TopicStr,"sub/register"),
+%%     SubLogin = string:str(TopicStr,"sub/login"),
+      if
+        SettingsIndex /= 0 ->
+          TopicKafka = list_to_binary([<<"ek_emqx_">>, <<"settings">>]);
+        EventsIndex /= 0 ->
+          TopicKafka = list_to_binary([<<"ek_emqx_">>, <<"events">>]);
+        SettingsIndex + EventsIndex == 0 ->
+          TopicKafka = list_to_binary([<<"ek_emqx_">>, <<"msg">>])  
+%%        OtaIndex /= 0 ->
+%%          TopicKafka = list_to_binary([ekaf_get_topic(), <<"ota">>]);
+%%        SubRegisterIndex /= 0 ->
+%%          TopicKafka = list_to_binary([ekaf_get_topic(), <<"sub_register">>]);
+%%        SubLogin /= 0 ->
+%%          TopicKafka = list_to_binary([ekaf_get_topic(), <<"sub_status">>]);
+%%        OtaIndex + SubRegisterIndex + SubLogin == 0 ->
+%%          TopicKafka = list_to_binary([ekaf_get_topic(), <<"msg">>])
+      end,
+      %%?LOG_INFO("[KAFKA PLUGIN] Publish to Topic: ~s~n, Message: ~s~n", [TopicKafka], [Message]),
+      ?LOG_INFO("[dja]TopicKafka topic = ~s~n", [TopicKafka]),
+      produce_kafka_payload(TopicKafka, Topic, Message);
+    TlinkFlag == false ->
+      ?LOG_INFO("[KAFKA PLUGIN]MQTT topic prefix is not tlink = ~s~n",[Topic])
+  end,
+  ok.
+  
+produce_kafka_payload(TopicKafka,Topic,Message) ->
+  %%Topic = ekaf_get_topic(),
+  ?LOG_INFO("[dja]TopicKafka topic = ~s~n", [TopicKafka]),
+  {ok, MessageBody} = emqx_json:safe_encode(Message),
+  ?LOG_INFO("[KAFKA PLUGIN]Message = ~s~n",[MessageBody]),
+  ?LOG_INFO("[dja] ---- iolist_to_binary"),
+  Payload = iolist_to_binary(MessageBody),
+  ?LOG_INFO("[dja] ---- produce_async_batched"),
+  ekaf:produce_async_batched(TopicKafka, Payload).
 
 produce_kafka_payload(Message) ->
   Topic = ekaf_get_topic(),
