@@ -25,11 +25,41 @@
   {datatype, string}
 ]}.
 
+{mapping, "kafka.other", "emqx_plugin_kafka.broker", [
+  {default, "ek_emqx_msg"},
+  {datatype, string}
+]}.
+
+{mapping, "kafka.settings", "emqx_plugin_kafka.broker", [
+  {default, "ek_emqx_settings"},
+  {datatype, string}
+]}.
+
+{mapping, "kafka.events", "emqx_plugin_kafka.broker", [
+  {default, "ek_eqmx_events"},
+  {datatype, string}
+]}.
+
+{mapping, "kafka.connected", "emqx_plugin_kafka.broker", [
+  {default, "ek_emqx_connected"},
+  {datatype, string}
+]}.
+
+{mapping, "kafka.disconnected", "emqx_plugin_kafka.broker", [
+  {default, "ek_emqx_disconnected"},
+  {datatype, string}
+]}.
+
 {translation, "emqx_plugin_kafka.broker", fun(Conf) ->
   KafkaHost = cuttlefish:conf_get("kafka.host", Conf),
   KafkaPort = cuttlefish:conf_get("kafka.port", Conf),
   KafkaPartitionStrategy = cuttlefish:conf_get("kafka.partitionstrategy", Conf),
   KafkaPartitionWorkers = cuttlefish:conf_get("kafka.partitionworkers", Conf),
   KafkaPayloadTopic = cuttlefish:conf_get("kafka.payloadtopic", Conf),
-  [{host, KafkaHost}, {port, KafkaPort}, {partitionstrategy, KafkaPartitionStrategy}, {partitionworkers, KafkaPartitionWorkers}, {payloadtopic, KafkaPayloadTopic}]
+  KafkaSettingsTopic = cuttlefish:conf_get("kafka.settings", Conf),
+  KafkaEventsTopic = cuttlefish:conf_get("kafka.events", Conf),
+  KafkaDisconnectedTopic = cuttlefish:conf_get("kafka.disconnected", Conf),
+  KafkaConnectedTopic = cuttlefish:conf_get("kafka.connected", Conf),
+  KafkaOtherTopic = cuttlefish:conf_get("kafka.other", Conf),
+  [{host, KafkaHost}, {port, KafkaPort}, {partitionstrategy, KafkaPartitionStrategy}, {partitionworkers, KafkaPartitionWorkers}, {payloadtopic, KafkaPayloadTopic}, {settings, KafkaSettingsTopic}, {events, KafkaEventsTopic}, {disconnected, KafkaDisconnectedTopic}, {connected, KafkaConnectedTopic}, {other, KafkaOtherTopic}]
   end}.
