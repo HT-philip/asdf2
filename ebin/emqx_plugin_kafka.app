@@ -1,6 +1,6 @@
 {application,emqx_plugin_kafka,
-             [{description,"EMQ X plugin kafka bridge, Edit by yzs-lyg"},
-              {vsn,"master"},
+             [{description,"EMQ X plugin kafka bridge, Edit by yzs-lyg, ultrakid"},
+              {vsn,"0.0.0+build.1.ref0571bb6"},
               {modules,[emqx_cli_demo_kafka,emqx_plugin_kafka,
                         emqx_plugin_kafka_app,emqx_plugin_kafka_sup]},
               {registered,[emqx_plugin_kafka_sup]},
@@ -8,6 +8,8 @@
               {mod,{emqx_plugin_kafka_app,[]}},
               {env,[]},
               {licenses,["Apache-2.0"]},
-              {maintainers,["lyg <3613840847@qq.com>"]},
-              {links,[{"Github",
-                       "https://github.com/yzs/emqx-plugin-kafka"}]}]}.
+              {maintainers,["lyg <3613840847@qq.com>",
+                            "ultrakid <ultrakid@qq.com>"]},
+              {links,[{"Github","https://github.com/yzs/emqx-plugin-kafka"},
+                      {"Github",
+                       "https://github.com/jameycai/emqx_plugin_kafka"}]}]}.
