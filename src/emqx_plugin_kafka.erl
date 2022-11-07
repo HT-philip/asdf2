@@ -214,10 +214,6 @@ on_client_disconnected(ClientInfo = #{clientid := ClientId}, ReasonCode, ConnInf
     {timestamp, Now},
     {online, Online}
   ],
-  %%Topic = <<"/d/settings/s000001">>,
-  %%Payload = Message#message.payload,  
-  %%produce_kafka_payload(Payload),
-  %%get_kafka_topic_produce(Topic,Payload),
   produce_kafka_payload(get_client_disconnected_topic(), Payload),
   ok.
 
@@ -268,7 +264,9 @@ on_message_dropped(Message, _By = #{node := Node}, Reason, _Env) ->
     [Node, Reason, emqx_message:format(Message)]),
   Topic = Message#message.topic,
   Payload = Message#message.payload,  
-  produce_kafka_payload(get_other_messages_topic(), Payload),
+  %% We're interested in settings, events as well to be published to the right Kafka topic,
+  %% so use get_kafka_topic_produce to identify correct route.
+  get_kafka_topic_produce(Topic, Payload),
   ok.
 
 
@@ -299,8 +297,6 @@ on_message_delivered(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
     {cluster_node, node()},
     {ts, Timestamp}
   ],
-%%  Topic = Message#message.topic,
-  Payload = Message#message.payload,
   get_kafka_topic_produce(Topic, Payload),
   ok.
 
@@ -416,8 +412,7 @@ unload() ->
 get_kafka_topic_produce(Topic, Message) ->
   ?LOG_INFO("[KAFKA PLUGIN]Kafka topic = ~s~n", [Topic]),
   TopicPrefix = string:left(binary_to_list(Topic),3),
-  TlinkFlag = string:equal(TopicPrefix, <<"/d/">>),
-%%  TlinkFlag = string:equal(TopicPrefix, <<"tlink/">>),
+  TlinkFlag = string:equal(TopicPrefix, <<"d/">>),
   if
     TlinkFlag == true ->
       TopicStr = binary_to_list(Topic),
@@ -431,8 +426,6 @@ get_kafka_topic_produce(Topic, Message) ->
         SettingsIndex + EventsIndex == 0 ->
           TopicKafka = get_other_messages_topic()
       end,
-      %%?LOG_INFO("[KAFKA PLUGIN] Publish to Topic: ~s~n, Message: ~s~n", [TopicKafka], [Message]),
-      %%?LOG_INFO("[dja]TopicKafka topic = ~s~n", [TopicKafka]),
       produce_kafka_payload(TopicKafka, Message);
     TlinkFlag == false ->
       ?LOG_INFO("[KAFKA PLUGIN]MQTT topic prefix is not tlink = ~s~n",[Topic])
@@ -443,19 +436,15 @@ produce_kafka_payload(TopicKafka,Message) ->
   ?LOG_INFO("[KAFKA PLUGIN]TopicKafka topic = ~s~n", [TopicKafka]),
   {ok, MessageBody} = emqx_json:safe_encode(Message),
   ?LOG_INFO("[KAFKA PLUGIN]Message = ~s~n",[MessageBody]),
-  %%?LOG_INFO("[dja] ---- iolist_to_binary"),
   Payload = iolist_to_binary(MessageBody),
-  %%?LOG_INFO("[dja] ---- produce_async_batched"),
   ekaf:produce_async_batched(list_to_binary(TopicKafka), Payload).
 
 produce_kafka_payload(TopicKafka,Topic,Message) ->
   %%Topic = ekaf_get_topic(),
-  ?LOG_INFO("[dja]TopicKafka topic = ~s~n", [TopicKafka]),
+  ?LOG_INFO("TopicKafka topic = ~s~n", [TopicKafka]),
   {ok, MessageBody} = emqx_json:safe_encode(Message),
   ?LOG_INFO("[KAFKA PLUGIN]Message = ~s~n",[MessageBody]),
-  ?LOG_INFO("[dja] ---- iolist_to_binary"),
   Payload = iolist_to_binary(MessageBody),
-  ?LOG_INFO("[dja] ---- produce_async_batched"),
   ekaf:produce_async_batched(TopicKafka, Payload).
 
 produce_kafka_payload(Message) ->
