@@ -411,7 +411,7 @@ unload() ->
 
 get_kafka_topic_produce(Topic, Message) ->
   ?LOG_INFO("[KAFKA PLUGIN]Kafka topic name = ~s~n", [Topic]),
-  TopicPrefix = string:left(binary_to_list(Topic),2),
+  TopicPrefix = string:left(binary_to_list(Topic),3),
   TlinkFlag = string:equal(TopicPrefix, <<"d/">>),
   ?LOG_INFO("[KAFKA PLUGIN]TopicPrefix = ~s~n", [TopicPrefix]),
   if
