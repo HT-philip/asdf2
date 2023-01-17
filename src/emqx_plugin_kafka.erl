@@ -438,7 +438,7 @@ produce_kafka_payload(TopicKafka,Message) ->
   {ok, MessageBody} = emqx_json:safe_encode(Message),
   ?LOG_INFO("[KAFKA PLUGIN]Message = ~s~n",[MessageBody]),
   Payload = iolist_to_binary(MessageBody),
-  ekaf:produce_async_batched(list_to_binary(TopicKafka), Payload).
+  ekaf:produce_async(list_to_binary(TopicKafka), Payload).
 
 produce_kafka_payload(TopicKafka,Topic,Message) ->
   %%Topic = ekaf_get_topic(),
@@ -446,13 +446,13 @@ produce_kafka_payload(TopicKafka,Topic,Message) ->
   {ok, MessageBody} = emqx_json:safe_encode(Message),
   ?LOG_INFO("[KAFKA PLUGIN]Message = ~s~n",[MessageBody]),
   Payload = iolist_to_binary(MessageBody),
-  ekaf:produce_async_batched(TopicKafka, Payload).
+  ekaf:produce_async(TopicKafka, Payload).
 
 produce_kafka_payload(Message) ->
   {ok, MessageBody} = emqx_json:safe_encode(Message),
   % ?LOG_INFO("[KAFKA PLUGIN]Message = ~s~n",[MessageBody]),
   Payload = iolist_to_binary(MessageBody),
-  ekaf:produce_async_batched(get_other_messages_topic(), Payload).
+  ekaf:produce_async(get_other_messages_topic(), Payload).
 
 ntoa({0, 0, 0, 0, 0, 16#ffff, AB, CD}) ->
   inet_parse:ntoa({AB bsr 8, AB rem 256, CD bsr 8, CD rem 256});
