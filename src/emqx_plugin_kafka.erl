@@ -262,11 +262,11 @@ on_message_dropped(#message{topic = <<"$SYS/", _/binary>>}, _By, _Reason, _Env) 
 on_message_dropped(Message, _By = #{node := Node}, Reason, _Env) ->
   ?LOG_INFO("[KAFKA PLUGIN]Message dropped by node ~s due to ~s: ~s~n",
     [Node, Reason, emqx_message:format(Message)]),
-  Topic = Message#message.topic,
-  Payload = Message#message.payload,  
+  %%Topic = Message#message.topic,
+  %%Payload = Message#message.payload,  
   %% We're interested in settings, events as well to be published to the right Kafka topic,
   %% so use get_kafka_topic_produce to identify correct route.
-  get_kafka_topic_produce(Topic, Payload),
+  %%get_kafka_topic_produce(Topic, Payload),
   ok.
 
 
