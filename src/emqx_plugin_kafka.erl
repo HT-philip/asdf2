@@ -262,11 +262,11 @@ on_message_dropped(#message{topic = <<"$SYS/", _/binary>>}, _By, _Reason, _Env) 
 on_message_dropped(Message, _By = #{node := Node}, Reason, _Env) ->
   ?LOG_INFO("[KAFKA PLUGIN]Message dropped by node ~s due to ~s: ~s~n",
     [Node, Reason, emqx_message:format(Message)]),
-  Topic = Message#message.topic,
-  Payload = Message#message.payload,  
+  %%Topic = Message#message.topic,
+  %%Payload = Message#message.payload,  
   %% We're interested in settings, events as well to be published to the right Kafka topic,
   %% so use get_kafka_topic_produce to identify correct route.
-  get_kafka_topic_produce(Topic, Payload),
+  %%get_kafka_topic_produce(Topic, Payload),
   ok.
 
 
@@ -274,30 +274,29 @@ on_message_dropped(Message, _By = #{node := Node}, Reason, _Env) ->
 on_message_publish(Message = #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
   ok;
 on_message_publish(Message, _Env) ->
-  {ok, Payload} = format_payload(Message),
-  %produce_kafka_payload(Payload),
-  ok.
-%%---------------------message publish stop----------------------%%
-
-on_message_delivered(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
-  ?LOG_INFO("[KAFKA PLUGIN]Message delivered to client(~s): ~s~n",
-    [ClientId, emqx_message:format(Message)]),
+  %%{ok, Payload} = format_payload(Message),
   Topic = Message#message.topic,
   Payload = Message#message.payload,
   Qos = Message#message.qos,
   From = Message#message.from,
   Timestamp = Message#message.timestamp,
-  Content = [
-    {action, <<"message_delivered">>},
-    {from, From},
-    {to, ClientId},
-    {topic, Topic},
-    {payload, Payload},
-    {qos, Qos},
-    {cluster_node, node()},
-    {ts, Timestamp}
-  ],
-  get_kafka_topic_produce(Topic, Payload),
+  %%Content = [
+  %%  {action, <<"message_published">>},
+  %%  {from, From},
+  %%  {to, ClientId},
+  %%  {topic, Topic},
+  %%  {payload, Payload},
+  %%  {qos, Qos},
+  %%  {cluster_node, node()},
+  %%  {ts, Timestamp}
+  %%],
+  ?LOG_INFO("[KAFKA PLUGIN]Message published to client(~s): ~s~n",
+    [From, emqx_message:format(Message)]),
+  get_kafka_topic_produce(Topic, Payload),  
+  ok.
+%%---------------------message publish stop----------------------%%
+
+on_message_delivered(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
   ok.
 
 on_message_acked(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
