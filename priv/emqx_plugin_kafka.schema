@@ -36,7 +36,12 @@
 ]}.
 
 {mapping, "kafka.events", "emqx_plugin_kafka.broker", [
-  {default, "ek_eqmx_events"},
+  {default, "ek_emqx_events"},
+  {datatype, string}
+]}.
+
+{mapping, "kafka.metrics", "emqx_plugin_kafka.broker", [
+  {default, "ek_emqx_metrics"},
   {datatype, string}
 ]}.
 
@@ -58,6 +63,7 @@
   KafkaPayloadTopic = cuttlefish:conf_get("kafka.payloadtopic", Conf),
   KafkaSettingsTopic = cuttlefish:conf_get("kafka.settings", Conf),
   KafkaEventsTopic = cuttlefish:conf_get("kafka.events", Conf),
+  KafkaMetricsTopic = cuttlefish:conf_get("kafka.metrics", Conf),
   KafkaDisconnectedTopic = cuttlefish:conf_get("kafka.disconnected", Conf),
   KafkaConnectedTopic = cuttlefish:conf_get("kafka.connected", Conf),
   KafkaOtherTopic = cuttlefish:conf_get("kafka.other", Conf),
