@@ -92,12 +92,14 @@ load(Env) ->
     KafkaTopic = proplists:get_value(payloadtopic, BrokerValues),
     KafkaSettingsTopic = proplists:get_value(settings, BrokerValues),
     KafkaEventsTopic = proplists:get_value(events, BrokerValues),
+    KafkaMetricsTopic = proplists:get_value(metrics, BrokerValues),
     KafkaConnectedTopic = proplists:get_value(connected, BrokerValues),
     KafkaDisconnectedTopic = proplists:get_value(disconnected, BrokerValues),
     KafkaOtherTopic = proplists:get_value(other, BrokerValues),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaTopic = ~s~n", [KafkaTopic]),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaSettingsTopic = ~s~n", [KafkaSettingsTopic]),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaEventsTopic = ~s~n", [KafkaEventsTopic]),
+    ?LOG_INFO("[KAFKA PLUGIN]KafkaMetricsTopic = ~s~n", [KafkaMetricsTopic]),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaConnectedTopic = ~s~n", [KafkaConnectedTopic]),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaDisconnectedTopic = ~s~n", [KafkaDisconnectedTopic]),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaOtherTopic = ~s~n", [KafkaOtherTopic]),
@@ -132,6 +134,11 @@ get_events_topic() ->
 %  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
 %  {ok, Topic} = proplists:get_value(<<"events">>, BrokerValues),
 %  Topic.
+
+get_metrics_topic() ->
+  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+  Topic = proplists:get_value(metrics, BrokerValues),
+  Topic.
 
 get_client_connected_topic() ->
 %  {ok, Topic} =  application:get_env(emqx_plugin_kafka, connected),
@@ -262,11 +269,11 @@ on_message_dropped(#message{topic = <<"$SYS/", _/binary>>}, _By, _Reason, _Env) 
 on_message_dropped(Message, _By = #{node := Node}, Reason, _Env) ->
   ?LOG_INFO("[KAFKA PLUGIN]Message dropped by node ~s due to ~s: ~s~n",
     [Node, Reason, emqx_message:format(Message)]),
-  Topic = Message#message.topic,
-  Payload = Message#message.payload,  
+  %%Topic = Message#message.topic,
+  %%Payload = Message#message.payload,  
   %% We're interested in settings, events as well to be published to the right Kafka topic,
   %% so use get_kafka_topic_produce to identify correct route.
-  get_kafka_topic_produce(Topic, Payload),
+  %% get_kafka_topic_produce(Topic, Payload),
   ok.
 
 
@@ -274,30 +281,29 @@ on_message_dropped(Message, _By = #{node := Node}, Reason, _Env) ->
 on_message_publish(Message = #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
   ok;
 on_message_publish(Message, _Env) ->
-  {ok, Payload} = format_payload(Message),
-  %produce_kafka_payload(Payload),
-  ok.
-%%---------------------message publish stop----------------------%%
-
-on_message_delivered(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
-  ?LOG_INFO("[KAFKA PLUGIN]Message delivered to client(~s): ~s~n",
-    [ClientId, emqx_message:format(Message)]),
+  %%{ok, Payload} = format_payload(Message),
   Topic = Message#message.topic,
   Payload = Message#message.payload,
   Qos = Message#message.qos,
   From = Message#message.from,
   Timestamp = Message#message.timestamp,
-  Content = [
-    {action, <<"message_delivered">>},
-    {from, From},
-    {to, ClientId},
-    {topic, Topic},
-    {payload, Payload},
-    {qos, Qos},
-    {cluster_node, node()},
-    {ts, Timestamp}
-  ],
-  get_kafka_topic_produce(Topic, Payload),
+  %%Content = [
+  %%  {action, <<"message_published">>},
+  %%  {from, From},
+  %%  {to, ClientId},
+  %%  {topic, Topic},
+  %%  {payload, Payload},
+  %%  {qos, Qos},
+  %%  {cluster_node, node()},
+  %%  {ts, Timestamp}
+  %%],
+  ?LOG_INFO("[KAFKA PLUGIN]Message published to client(~s): ~s~n",
+    [From, emqx_message:format(Message)]),
+  get_kafka_topic_produce(Topic, Payload),  
+  ok.
+%%---------------------message publish stop----------------------%%
+
+on_message_delivered(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
   ok.
 
 on_message_acked(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
@@ -419,12 +425,15 @@ get_kafka_topic_produce(Topic, Message) ->
       TopicStr = binary_to_list(Topic),
       SettingsIndex = string:str(TopicStr,"settings"),
       EventsIndex = string:str(TopicStr,"events"),
+      MetricsIndex = string:str(TopicStr,"metrics"),
       if
         SettingsIndex /= 0 ->
           TopicKafka = get_settings_topic();
+        MetricsIndex /= 0 ->
+          TopicKafka = get_metrics_topic();
         EventsIndex /= 0 ->
           TopicKafka = get_events_topic();
-        SettingsIndex + EventsIndex == 0 ->
+        SettingsIndex + EventsIndex + MetricsIndex == 0 ->
           TopicKafka = get_other_messages_topic()
       end,
       produce_kafka_payload(TopicKafka, Message);
