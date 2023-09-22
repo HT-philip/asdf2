@@ -423,9 +423,9 @@ get_kafka_topic_produce(Topic, Message) ->
   if
     TlinkFlag == true ->
       TopicStr = binary_to_list(Topic),
-      SettingsIndex = string:str(TopicStr,"settings"),
-      EventsIndex = string:str(TopicStr,"events"),
-      MetricsIndex = string:str(TopicStr,"metrics"),
+      SettingsIndex = string:str(TopicStr,"d/settings"),
+      EventsIndex = string:str(TopicStr,"d/events"),
+      MetricsIndex = string:str(TopicStr,"d/metrics"),
       if
         SettingsIndex /= 0 ->
           TopicKafka = get_settings_topic();
