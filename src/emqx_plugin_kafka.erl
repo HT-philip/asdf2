@@ -96,6 +96,12 @@ load(Env) ->
     KafkaConnectedTopic = proplists:get_value(connected, BrokerValues),
     KafkaDisconnectedTopic = proplists:get_value(disconnected, BrokerValues),
     KafkaOtherTopic = proplists:get_value(other, BrokerValues),
+    KafkaSightmindEventMetadata = proplists:get_value(sightmind_event_metadata,BrokerValues),
+    KafkaSightmindEventEvents = proplists:get_value(sightmind_event_events,BrokerValues),
+    KafkaSightmindEventCommand = proplists:get_value(sightmind_event_command,BrokerValues),
+    KafkaDmproEventMetadata = proplists:get_value(dmpro_event_metadata,BrokerValues),
+    KafkaDmproEventEvents = proplists:get_value(dmpro_event_events,BrokerValues),
+    KafkaDmproEventCommand = proplists:get_value(dmpro_event_command,BrokerValues),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaTopic = ~s~n", [KafkaTopic]),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaSettingsTopic = ~s~n", [KafkaSettingsTopic]),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaEventsTopic = ~s~n", [KafkaEventsTopic]),
@@ -103,6 +109,12 @@ load(Env) ->
     ?LOG_INFO("[KAFKA PLUGIN]KafkaConnectedTopic = ~s~n", [KafkaConnectedTopic]),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaDisconnectedTopic = ~s~n", [KafkaDisconnectedTopic]),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaOtherTopic = ~s~n", [KafkaOtherTopic]),
+    ?LOG_INFO("[KAFKA PLUGIN]KafkaSightmindEventMetadata = ~s~n", [KafkaSightmindEventMetadata]),
+    ?LOG_INFO("[KAFKA PLUGIN]KafkaSightmindEventEvents = ~s~n", [KafkaSightmindEventEvent]),
+    ?LOG_INFO("[KAFKA PLUGIN]KafkaSightmindEventCommand = ~s~n", [KafkaSightmindEventCommand]),
+    ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventMetadata = ~s~n", [KafkaDmproEventMetadata]),
+    ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventEvents = ~s~n", [KafkaDmproEventEvent]),
+    ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventCommand = ~s~n", [KafkaDmproEventCommand]),
     application:set_env(emqx_plugin_kafka, settings_topic, list_to_binary(KafkaSettingsTopic)),
     application:set_env(ekaf, ekaf_bootstrap_broker, {KafkaHost, list_to_integer(KafkaPort)}),
     application:set_env(ekaf, ekaf_partition_strategy, list_to_atom(KafkaPartitionStrategy)),
@@ -175,6 +187,36 @@ get_other_messages_topic() ->
 %  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
 %  {ok, Topic} = proplists:get_value(<<"other">>, BrokerValues),
 %  Topic.
+
+get_sightmind_event_metadata_topic() ->
+  {ok,BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+  Topic = proplists:get_value(sightmind_event_metadata,BrokerValues),
+  Topic.
+
+get_sightmind_event_event_topic() ->
+    {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+    Topic = proplists:get_value(sightmind_event_events,BrokerValues),
+    Topic.
+
+get_sightmind_event_command_topic() ->
+  {ok,BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
+  Topic = proplists:get_value(sightmind_event_command,BrokerValues),
+  Topic.
+
+get_dmpro_event_metadata_topic() ->
+  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
+  Topic = proplists:get_value(dmpro_event_metadata,BrokerValues),
+  Topic.
+
+get_dmpro_event_event_topic() ->
+  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
+  Topic = proplists:get_value(dmpro_event_events,BrokerValues),
+  Topic.
+
+get_dempro_event_command_topic() ->
+  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
+  Topic = proplists:get_value(dmpro_event_command,BrokerValues),
+  Topic.
 
 on_client_connect(ConnInfo = #{clientid := ClientId}, Props, _Env) ->
   ?LOG_INFO("[KAFKA PLUGIN]Client(~s) connect, ConnInfo: ~p, Props: ~p~n",
@@ -426,6 +468,12 @@ get_kafka_topic_produce(Topic, Message) ->
       SettingsIndex = string:str(TopicStr,"d/settings"),
       EventsIndex = string:str(TopicStr,"d/events"),
       MetricsIndex = string:str(TopicStr,"d/metrics"),
+      SightMindMetadataIndex = string:str(TopicStr,"d/sm-metadata"),
+      SightMindEventIndex = string:str(TopicStr,"d/sm-event"),
+      SightMindCommandIndex = string:str(TopicStr,"d/sm-command"),
+      DmproMetadataIndex = string:str(TopicStr,"d/dm-metadata"),
+      DmproEventIndex = string:str(TopicStr,"d/dm-event"),
+      DmproCommandIndex = string:str(TopicStr,"d/dm-command"),
       if
         SettingsIndex /= 0 ->
           TopicKafka = get_settings_topic();
@@ -433,6 +481,18 @@ get_kafka_topic_produce(Topic, Message) ->
           TopicKafka = get_metrics_topic();
         EventsIndex /= 0 ->
           TopicKafka = get_events_topic();
+        SightMindMetadataIndex /= 0 ->
+          TopicKafka = get_sightmind_event_metadata_topic();
+        SightMindEventIndex /= 0 ->
+          TopicKafka = get_sightmind_event_event_topic();
+        SightMindCommandIndex /= 0 ->
+          TopicKafka = get_sightmind_event_command_topic();
+        DmproMetadataIndex /= 0 ->
+          TopicKafka = get_dmpro_event_metadata_topic();
+        DmproEventIndex /= 0 ->
+          TopicKafka = get_dmpro_event_event_topic();
+        DmproCommandIndex /= 0 ->
+          TopicKafka = get_dempro_event_command_topic();
         SettingsIndex + EventsIndex + MetricsIndex == 0 ->
           TopicKafka = get_other_messages_topic()
       end,

@@ -67,5 +67,11 @@
   KafkaDisconnectedTopic = cuttlefish:conf_get("kafka.disconnected", Conf),
   KafkaConnectedTopic = cuttlefish:conf_get("kafka.connected", Conf),
   KafkaOtherTopic = cuttlefish:conf_get("kafka.other", Conf),
+  KafkaSightmindEventMetadata = cuttlefish:conf_get("kafka.sightmind_event_metadata", Conf),
+  KafkaSightmindEventEvent = cuttlefish:conf_get("kafka.sightmind_event_events", Conf),
+  KafkaSightmindEventCommand = cuttlefish:conf_get("kafka.sightmind_event_command", Conf),
+  KafkaDmproEventMetadata = cuttlefish:conf_get("kafka.dmpro_event_metadata", Conf),
+  KafkaDmproEventEvent = cuttlefish:conf_get("kafka.dmpro_event_events", Conf),
+  KafkaDmproEventCommand = cuttlefish:conf_get("kafka.dmpro_event_command", Conf),
   [{host, KafkaHost}, {port, KafkaPort}, {partitionstrategy, KafkaPartitionStrategy}, {partitionworkers, KafkaPartitionWorkers}, {payloadtopic, KafkaPayloadTopic}, {settings, KafkaSettingsTopic}, {events, KafkaEventsTopic}, {metrics, KafkaMetricsTopic}, {disconnected, KafkaDisconnectedTopic}, {connected, KafkaConnectedTopic}, {other, KafkaOtherTopic}]
   end}.
