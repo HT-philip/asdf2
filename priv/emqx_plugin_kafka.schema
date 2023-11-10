@@ -55,6 +55,36 @@
   {datatype, string}
 ]}.
 
+{mapping, "kafka.sightmind_event_metadata", "emqx_plugin_kafka.broker", [
+  {default, "ek_emqx_sightmind_metadata"},
+  {datatype, string}
+]}.
+
+{mapping, "kafka.sightmind_event_events", "emqx_plugin_kafka.broker", [
+  {default, "ek_emqx_sightmind_events"},
+  {datatype, string}
+]}.
+
+{mapping, "kafka.sightmind_event_command", "emqx_plugin_kafka.broker", [
+  {default, "ek_emqx_sightmind_command"},
+  {datatype, string}
+]}.
+
+{mapping, "kafka.dmpro_event_metadata", "emqx_plugin_kafka.broker", [
+  {default, "ek_emqx_dmpro_metadata"},
+  {datatype, string}
+]}.
+
+{mapping, "kafka.dmpro_event_events", "emqx_plugin_kafka.broker", [
+  {default, "ek_emqx_dmpro_events"},
+  {datatype, string}
+]}.
+
+{mapping, "kafka.dmpro_event_command", "emqx_plugin_kafka.broker", [
+  {default, "ek_emqx_dmpro_command"},
+  {datatype, string}
+]}.
+
 {translation, "emqx_plugin_kafka.broker", fun(Conf) ->
   KafkaHost = cuttlefish:conf_get("kafka.host", Conf),
   KafkaPort = cuttlefish:conf_get("kafka.port", Conf),
@@ -73,5 +103,5 @@
   KafkaDmproEventMetadata = cuttlefish:conf_get("kafka.dmpro_event_metadata", Conf),
   KafkaDmproEventEvent = cuttlefish:conf_get("kafka.dmpro_event_events", Conf),
   KafkaDmproEventCommand = cuttlefish:conf_get("kafka.dmpro_event_command", Conf),
-  [{host, KafkaHost}, {port, KafkaPort}, {partitionstrategy, KafkaPartitionStrategy}, {partitionworkers, KafkaPartitionWorkers}, {payloadtopic, KafkaPayloadTopic}, {settings, KafkaSettingsTopic}, {events, KafkaEventsTopic}, {metrics, KafkaMetricsTopic}, {disconnected, KafkaDisconnectedTopic}, {connected, KafkaConnectedTopic}, {other, KafkaOtherTopic}]
+  [{host, KafkaHost}, {port, KafkaPort}, {partitionstrategy, KafkaPartitionStrategy}, {partitionworkers, KafkaPartitionWorkers}, {payloadtopic, KafkaPayloadTopic}, {settings, KafkaSettingsTopic}, {events, KafkaEventsTopic}, {metrics, KafkaMetricsTopic}, {disconnected, KafkaDisconnectedTopic}, {connected, KafkaConnectedTopic}, {other, KafkaOtherTopic}, {sightmind_event_metadata, KafkaSightmindEventMetadata}, {sightmind_event_events, KafkaSightmindEventEvent}, {sightmind_event_command, KafkaSightmindEventCommand}, {dmpro_event_metadata, KafkaDmproEventMetadata}, {dmpro_event_events, KafkaDmproEventEvent}, {dmpro_event_command, KafkaDmproEventCommand}]
   end}.
