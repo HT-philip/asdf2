@@ -85,6 +85,16 @@
   {datatype, string}
 ]}.
 
+{mapping, "kafka.channel_connected", "emqx_plugin_kafka.broker", [
+  {default, "ek_emqx_ch_connected"},
+  {datatype, string}
+]}.
+
+{mapping, "kafka.channel_disconnected", "emqx_plugin_kafka.broker", [
+  {default, "ek_emqx_ch_disconnected"},
+  {datatype, string}
+]}.
+
 {translation, "emqx_plugin_kafka.broker", fun(Conf) ->
   KafkaHost = cuttlefish:conf_get("kafka.host", Conf),
   KafkaPort = cuttlefish:conf_get("kafka.port", Conf),
@@ -103,5 +113,7 @@
   KafkaDmproEventMetadata = cuttlefish:conf_get("kafka.dmpro_event_metadata", Conf),
   KafkaDmproEventEvent = cuttlefish:conf_get("kafka.dmpro_event_events", Conf),
   KafkaDmproEventCommand = cuttlefish:conf_get("kafka.dmpro_event_command", Conf),
-  [{host, KafkaHost}, {port, KafkaPort}, {partitionstrategy, KafkaPartitionStrategy}, {partitionworkers, KafkaPartitionWorkers}, {payloadtopic, KafkaPayloadTopic}, {settings, KafkaSettingsTopic}, {events, KafkaEventsTopic}, {metrics, KafkaMetricsTopic}, {disconnected, KafkaDisconnectedTopic}, {connected, KafkaConnectedTopic}, {other, KafkaOtherTopic}, {sightmind_event_metadata, KafkaSightmindEventMetadata}, {sightmind_event_events, KafkaSightmindEventEvent}, {sightmind_event_command, KafkaSightmindEventCommand}, {dmpro_event_metadata, KafkaDmproEventMetadata}, {dmpro_event_events, KafkaDmproEventEvent}, {dmpro_event_command, KafkaDmproEventCommand}]
+  KafkaChannelConnectedTopic = cuttlefish:conf_get("kafka.channel_connected", Conf),
+  KafkaChannelDisconnectedTopic = cuttlefish:conf_get("kafka.channel_disconnected", Conf),
+  [{host, KafkaHost}, {port, KafkaPort}, {partitionstrategy, KafkaPartitionStrategy}, {partitionworkers, KafkaPartitionWorkers}, {payloadtopic, KafkaPayloadTopic}, {settings, KafkaSettingsTopic}, {events, KafkaEventsTopic}, {metrics, KafkaMetricsTopic}, {disconnected, KafkaDisconnectedTopic}, {connected, KafkaConnectedTopic}, {other, KafkaOtherTopic}, {sightmind_event_metadata, KafkaSightmindEventMetadata}, {sightmind_event_events, KafkaSightmindEventEvent}, {sightmind_event_command, KafkaSightmindEventCommand}, {dmpro_event_metadata, KafkaDmproEventMetadata}, {dmpro_event_events, KafkaDmproEventEvent}, {dmpro_event_command, KafkaDmproEventCommand}, {channel_connected, KafkaChannelConnectedTopic}, {channel_disconnected, KafkaChannelDisconnectedTopic}]
   end}.

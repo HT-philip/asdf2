@@ -102,6 +102,8 @@ load(Env) ->
     KafkaDmproEventMetadata = proplists:get_value(dmpro_event_metadata,BrokerValues),
     KafkaDmproEventEvents = proplists:get_value(dmpro_event_events,BrokerValues),
     KafkaDmproEventCommand = proplists:get_value(dmpro_event_command,BrokerValues),
+    KafkaChannelConnectedTopic = proplists:get_value(channel_connected,BrokerValues),
+    KafkaChannelDisconnectedTopic = proplists:get_value(channel_disconnected,BrokerValues),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaTopic = ~s~n", [KafkaTopic]),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaSettingsTopic = ~s~n", [KafkaSettingsTopic]),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaEventsTopic = ~s~n", [KafkaEventsTopic]),
@@ -115,6 +117,8 @@ load(Env) ->
     ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventMetadata = ~s~n", [KafkaDmproEventMetadata]),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventEvents = ~s~n", [KafkaDmproEventEvents]),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventCommand = ~s~n", [KafkaDmproEventCommand]),
+    ?LOG_INFO("[KAFKA PLUGIN]KafkaChannelConnectedTopic = ~s~n", [KafkaChannelConnectedTopic]),
+    ?LOG_INFO("[KAFKA PLUGIN]KafkaChannelDisconnectedTopic = ~s~n", [KafkaChannelDisconnectedTopic]),
     application:set_env(emqx_plugin_kafka, settings_topic, list_to_binary(KafkaSettingsTopic)),
     application:set_env(ekaf, ekaf_bootstrap_broker, {KafkaHost, list_to_integer(KafkaPort)}),
     application:set_env(ekaf, ekaf_partition_strategy, list_to_atom(KafkaPartitionStrategy)),
@@ -216,6 +220,16 @@ get_dmpro_event_event_topic() ->
 get_dempro_event_command_topic() ->
   {ok, BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
   Topic = proplists:get_value(dmpro_event_command,BrokerValues),
+  Topic.
+
+get_channel_conn_topic() ->
+  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
+  Topic = proplists:get_value(channel_connected,BrokerValues),
+  Topic.
+
+get_channel_disconn_topic() ->
+  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
+  Topic = proplists:get_value(channel_disconnected,BrokerValues),
   Topic.
 
 on_client_connect(ConnInfo = #{clientid := ClientId}, Props, _Env) ->
@@ -474,6 +488,8 @@ get_kafka_topic_produce(Topic, Message) ->
       DmproMetadataIndex = string:str(TopicStr,"d/dm-metadata"),
       DmproEventIndex = string:str(TopicStr,"d/dm-event"),
       DmproCommandIndex = string:str(TopicStr,"d/dm-command"),
+      ChannelConnIndex = string:str(TopicStr,"d/ch/conn"),
+      ChannelDisconnIndex = string:str(TopicStr,"d/ch/disconn"),
       if
         SettingsIndex /= 0 ->
           TopicKafka = get_settings_topic();
@@ -493,6 +509,10 @@ get_kafka_topic_produce(Topic, Message) ->
           TopicKafka = get_dmpro_event_event_topic();
         DmproCommandIndex /= 0 ->
           TopicKafka = get_dempro_event_command_topic();
+        ChannelConnIndex /= 0 ->
+          TopicKafka = get_channel_conn_topic();
+        ChannelDisconnIndex /= 0 ->
+          TopicKafka = get_channel_disconn_topic();
         SettingsIndex + EventsIndex + MetricsIndex == 0 ->
           TopicKafka = get_other_messages_topic()
       end,
