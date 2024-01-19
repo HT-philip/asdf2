@@ -58,7 +58,7 @@
 
 %% Called when the plugin application start
 load(Env) ->
-  ekaf_init([Env]),
+  kafka_init([Env]),
   emqx:hook('client.connect', {?MODULE, on_client_connect, [Env]}),
   emqx:hook('client.connack', {?MODULE, on_client_connack, [Env]}),
   emqx:hook('client.connected', {?MODULE, on_client_connected, [Env]}),
@@ -82,7 +82,7 @@ load(Env) ->
   ekaf_init(_Env) ->
     io:format("Init emqx plugin kafka....."),
     {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
-    ?LOG_INFO("[KAFKA PLUGIN]BrokerValues = ~s~n", [BrokerValues]),
+    ?LOG_INFO("[KAFKA PLUGIN]BrokerValues = ~p~n", [BrokerValues]),
     KafkaHost = proplists:get_value(host, BrokerValues),
     ?LOG_INFO("[KAFKA PLUGIN]KafkaHost = ~s~n", [KafkaHost]),
     KafkaPort = proplists:get_value(port, BrokerValues),
@@ -257,10 +257,10 @@ on_client_connected(ClientInfo = #{clientid := ClientId}, ConnInfo, _Env) ->
     {ipaddress, iolist_to_binary(ntoa(IpAddr))},
     {proto_name, maps:get(proto_name, ConnInfo)},
     {proto_ver, maps:get(proto_ver, ConnInfo)},
-    {timestamp, Now},
+    {ts, Now},
     {online, Online}
   ],
-  produce_kafka_payload(get_client_connected_topic(), Payload),
+  produce_kafka_payload(ClientId, Payload),
   ok.
 
 on_client_disconnected(ClientInfo = #{clientid := ClientId}, ReasonCode, ConnInfo, _Env) ->
@@ -274,10 +274,10 @@ on_client_disconnected(ClientInfo = #{clientid := ClientId}, ReasonCode, ConnInf
     {device_id, ClientId},
     {username, maps:get(username, ClientInfo)},
     {reason, ReasonCode},
-    {timestamp, Now},
+    {ts, Now},
     {online, Online}
   ],
-  produce_kafka_payload(get_client_disconnected_topic(), Payload),
+  produce_kafka_payload(ClientId, Payload),
   ok.
 
 on_client_authenticate(_ClientInfo = #{clientid := ClientId}, Result, _Env) ->
@@ -301,9 +301,9 @@ on_client_subscribe(#{clientid := ClientId}, _Properties, TopicFilters, _Env) ->
     {action, Action},
     {topic, Topic},
     {qos, maps:get(qos, Qos)},
-    {timestamp, Now}
+    {ts, Now}
   ],
-%  produce_kafka_payload(get_other_messages_topic(), Payload),
+  produce_kafka_payload(ClientId, Payload),
   ok.
 %%---------------------client subscribe stop----------------------%%
 on_client_unsubscribe(#{clientid := ClientId}, _Properties, TopicFilters, _Env) ->
@@ -315,9 +315,9 @@ on_client_unsubscribe(#{clientid := ClientId}, _Properties, TopicFilters, _Env) 
     {device_id, ClientId},
     {action, Action},
     {topic, Topic},
-    {timestamp, Now}
+    {ts, Now}
   ],
-%  produce_kafka_payload(get_other_messages_topic(), Payload),
+  produce_kafka_payload(ClientId, Payload),
   ok.
 
 on_message_dropped(#message{topic = <<"$SYS/", _/binary>>}, _By, _Reason, _Env) ->
@@ -337,36 +337,61 @@ on_message_dropped(Message, _By = #{node := Node}, Reason, _Env) ->
 on_message_publish(Message = #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
   ok;
 on_message_publish(Message, _Env) ->
-  %%{ok, Payload} = format_payload(Message),
-  Topic = Message#message.topic,
-  Payload = Message#message.payload,
-  Qos = Message#message.qos,
-  From = Message#message.from,
-  Timestamp = Message#message.timestamp,
-  %%Content = [
-  %%  {action, <<"message_published">>},
-  %%  {from, From},
-  %%  {to, ClientId},
-  %%  {topic, Topic},
-  %%  {payload, Payload},
-  %%  {qos, Qos},
-  %%  {cluster_node, node()},
-  %%  {ts, Timestamp}
-  %%],
+  {ok, ClientId, Payload} = format_payload(Message),
+  From = Message#message.from,  
   ?LOG_INFO("[KAFKA PLUGIN]Message published to client(~s): ~s~n",
     [From, emqx_message:format(Message)]),
-  get_kafka_topic_produce(Topic, Payload),  
+  produce_kafka_payload(ClientId, Payload),
   ok.
 %%---------------------message publish stop----------------------%%
 
+  % Topic = Message#message.topic,
+  % Payload = Message#message.payload,
+  % Qos = Message#message.qos,
+  % From = Message#message.from,
+  % Timestamp = Message#message.timestamp,
+  % %%Content = [
+  % %%  {action, <<"message_published">>},
+  % %%  {from, From},
+  % %%  {to, ClientId},
+  % %%  {topic, Topic},
+  % %%  {payload, Payload},
+  % %%  {qos, Qos},
+  % %%  {cluster_node, node()},
+  % %%  {ts, Timestamp}
+  % %%],
+  % ?LOG_INFO("[KAFKA PLUGIN]Message published to client(~s): ~s~n",
+  %   [From, emqx_message:format(Message)]),
+  % get_kafka_topic_produce(Topic, Payload),  
+  % ok.
+%%---------------------message publish stop----------------------%%
+
 on_message_delivered(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
+  ?LOG_INFO("[KAFKA PLUGIN]Message delivered to client(~s): ~s~n",
+    [ClientId, emqx_message:format(Message)]),
+  Topic = Message#message.topic,
+  Payload = transform_payload(Message#message.payload),
+  Qos = Message#message.qos,
+  From = Message#message.from,
+  Timestamp = Message#message.timestamp,
+  Content = [
+    {action, <<"message_delivered">>},
+    {from, From},
+    {to, ClientId},
+    {topic, Topic},
+    {payload, Payload},
+    {qos, Qos},
+    {cluster_node, node()},
+    {ts, Timestamp}
+  ],
+  produce_kafka_payload(ClientId, Content),
   ok.
 
 on_message_acked(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
   ?LOG_INFO("[KAFKA PLUGIN]Message acked by client(~s): ~s~n",
     [ClientId, emqx_message:format(Message)]),
   Topic = Message#message.topic,
-  Payload = Message#message.payload,
+  Payload = transform_payload(Message#message.payload),
   Qos = Message#message.qos,
   From = Message#message.from,
   Timestamp = Message#message.timestamp,
@@ -380,7 +405,7 @@ on_message_acked(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
     {cluster_node, node()},
     {ts, Timestamp}
   ],
-  %produce_kafka_payload(Content),
+  %produce_kafka_payload(ClientId, Content),
   ok.
 
 %%--------------------------------------------------------------------
@@ -417,35 +442,55 @@ on_session_terminated(_ClientInfo = #{clientid := ClientId}, Reason, SessInfo, _
     [ClientId, Reason, SessInfo]),
   ok.
 
-%ekaf_get_topic() ->
-%  {ok, Topic} = application:get_env(ekaf, ekaf_bootstrap_topics),
-%  Topic.
+kafka_init(_Env) ->
+  ?LOG_INFO("Start to init emqx plugin kafka..... ~n"),
+  {ok, AddressList} = application:get_env(emqx_plugin_kafka, kafka_address_list),
+  ?LOG_INFO("[KAFKA PLUGIN]KafkaAddressList = ~p~n", [AddressList]),
+  {ok, KafkaConfig} = application:get_env(emqx_plugin_kafka, kafka_config),
+  ?LOG_INFO("[KAFKA PLUGIN]KafkaConfig = ~p~n", [KafkaConfig]),
+  {ok, KafkaTopic} = application:get_env(emqx_plugin_kafka, topic),
+  ?LOG_INFO("[KAFKA PLUGIN]KafkaTopic = ~s~n", [KafkaTopic]),
+  {ok, _} = application:ensure_all_started(brod),
+  ok = brod:start_client(AddressList, emqx_repost_worker, KafkaConfig),
+  ok = brod:start_producer(emqx_repost_worker, KafkaTopic, []),
+  ?LOG_INFO("Init emqx plugin kafka successfully.....~n"),
+  ok.
+
+get_kafka_topic() ->
+  {ok, Topic} = application:get_env(emqx_plugin_kafka, topic),
+  Topic.
+
+need_base64() ->
+  {ok, NeedBase64} = application:get_env(emqx_plugin_kafka, publish_base64),
+  NeedBase64.
+
+transform_payload(Payload) ->
+  NeedBase64 = need_base64(),
+  if
+    NeedBase64 == true ->
+      Content = list_to_binary(base64:encode_to_string(Payload));
+    NeedBase64 == false ->
+      Content = Payload
+  end,
+  Content.
 
 
 format_payload(Message) ->
   Username = emqx_message:get_header(username, Message),
   Topic = Message#message.topic,
-  Tail = string:right(binary_to_list(Topic), 4),
-  RawType = string:equal(Tail, <<"_raw">>),
+  % Tail = string:right(binary_to_list(Topic), 4),
+  % RawType = string:equal(Tail, <<"_raw">>),
   % ?LOG_INFO("[KAFKA PLUGIN]Tail= ~s , RawType= ~s~n",[Tail,RawType]),
-
-  MsgPayload = Message#message.payload,
-  % ?LOG_INFO("[KAFKA PLUGIN]MsgPayload : ~s~n", [MsgPayload]),
-  if
-    RawType == true ->
-      MsgPayload64 = list_to_binary(base64:encode_to_string(MsgPayload));
-  % ?LOG_INFO("[KAFKA PLUGIN]MsgPayload64 : ~s~n", [MsgPayload64]);
-    RawType == false ->
-      MsgPayload64 = MsgPayload
-  end,
+  ClientId = Message#message.from,
+  Content = transform_payload(Message#message.payload),
   Payload = [{action, message_publish},
-    {device_id, Message#message.from},
+    {device_id, ClientId},
     {username, Username},
     {topic, Topic},
-    {payload, MsgPayload64},
+    {payload, Content},
     {ts, Message#message.timestamp}],
 
-  {ok, Payload}.
+  {ok, ClientId, Payload}.
 
 
 %% Called when the plugin application stop
@@ -471,77 +516,81 @@ unload() ->
   emqx:unhook('message.dropped', {?MODULE, on_message_dropped}).
 
 
-get_kafka_topic_produce(Topic, Message) ->
-  ?LOG_INFO("[KAFKA PLUGIN]Kafka topic name = ~s~n", [Topic]),
-  TopicPrefix = string:left(binary_to_list(Topic),2),
-  TlinkFlag = string:equal(TopicPrefix, <<"d/">>),
-  ?LOG_INFO("[KAFKA PLUGIN]TopicPrefix = ~s~n", [TopicPrefix]),
-  if
-    TlinkFlag == true ->
-      TopicStr = binary_to_list(Topic),
-      SettingsIndex = string:str(TopicStr,"d/settings"),
-      EventsIndex = string:str(TopicStr,"d/events"),
-      MetricsIndex = string:str(TopicStr,"d/metrics"),
-      SightMindMetadataIndex = string:str(TopicStr,"d/sm-metadata"),
-      SightMindEventIndex = string:str(TopicStr,"d/sm-event"),
-      SightMindCommandIndex = string:str(TopicStr,"d/sm-command"),
-      DmproMetadataIndex = string:str(TopicStr,"d/dm-metadata"),
-      DmproEventIndex = string:str(TopicStr,"d/dm-event"),
-      DmproCommandIndex = string:str(TopicStr,"d/dm-command"),
-      ChannelConnIndex = string:str(TopicStr,"d/ch/conn"),
-      ChannelDisconnIndex = string:str(TopicStr,"d/ch/disconn"),
-      if
-        SettingsIndex /= 0 ->
-          TopicKafka = get_settings_topic();
-        MetricsIndex /= 0 ->
-          TopicKafka = get_metrics_topic();
-        EventsIndex /= 0 ->
-          TopicKafka = get_events_topic();
-        SightMindMetadataIndex /= 0 ->
-          TopicKafka = get_sightmind_event_metadata_topic();
-        SightMindEventIndex /= 0 ->
-          TopicKafka = get_sightmind_event_event_topic();
-        SightMindCommandIndex /= 0 ->
-          TopicKafka = get_sightmind_event_command_topic();
-        DmproMetadataIndex /= 0 ->
-          TopicKafka = get_dmpro_event_metadata_topic();
-        DmproEventIndex /= 0 ->
-          TopicKafka = get_dmpro_event_event_topic();
-        DmproCommandIndex /= 0 ->
-          TopicKafka = get_dempro_event_command_topic();
-        ChannelConnIndex /= 0 ->
-          TopicKafka = get_channel_conn_topic();
-        ChannelDisconnIndex /= 0 ->
-          TopicKafka = get_channel_disconn_topic();
-        SettingsIndex + EventsIndex + MetricsIndex == 0 ->
-          TopicKafka = get_other_messages_topic()
-      end,
-      produce_kafka_payload(TopicKafka, Message);
-    TlinkFlag == false ->
-      ?LOG_INFO("[KAFKA PLUGIN]MQTT topic prefix is not tlink = ~s~n",[Topic])
-  end,
-  ok.
+% get_kafka_topic_produce(Topic, Message) ->
+%   ?LOG_INFO("[KAFKA PLUGIN]Kafka topic name = ~s~n", [Topic]),
+%   TopicPrefix = string:left(binary_to_list(Topic),2),
+%   TlinkFlag = string:equal(TopicPrefix, <<"d/">>),
+%   ?LOG_INFO("[KAFKA PLUGIN]TopicPrefix = ~s~n", [TopicPrefix]),
+%   if
+%     TlinkFlag == true ->
+%       TopicStr = binary_to_list(Topic),
+%       SettingsIndex = string:str(TopicStr,"d/settings"),
+%       EventsIndex = string:str(TopicStr,"d/events"),
+%       MetricsIndex = string:str(TopicStr,"d/metrics"),
+%       SightMindMetadataIndex = string:str(TopicStr,"d/sm-metadata"),
+%       SightMindEventIndex = string:str(TopicStr,"d/sm-event"),
+%       SightMindCommandIndex = string:str(TopicStr,"d/sm-command"),
+%       DmproMetadataIndex = string:str(TopicStr,"d/dm-metadata"),
+%       DmproEventIndex = string:str(TopicStr,"d/dm-event"),
+%       DmproCommandIndex = string:str(TopicStr,"d/dm-command"),
+%       ChannelConnIndex = string:str(TopicStr,"d/ch/conn"),
+%       ChannelDisconnIndex = string:str(TopicStr,"d/ch/disconn"),
+%       if
+%         SettingsIndex /= 0 ->
+%           TopicKafka = get_settings_topic();
+%         MetricsIndex /= 0 ->
+%           TopicKafka = get_metrics_topic();
+%         EventsIndex /= 0 ->
+%           TopicKafka = get_events_topic();
+%         SightMindMetadataIndex /= 0 ->
+%           TopicKafka = get_sightmind_event_metadata_topic();
+%         SightMindEventIndex /= 0 ->
+%           TopicKafka = get_sightmind_event_event_topic();
+%         SightMindCommandIndex /= 0 ->
+%           TopicKafka = get_sightmind_event_command_topic();
+%         DmproMetadataIndex /= 0 ->
+%           TopicKafka = get_dmpro_event_metadata_topic();
+%         DmproEventIndex /= 0 ->
+%           TopicKafka = get_dmpro_event_event_topic();
+%         DmproCommandIndex /= 0 ->
+%           TopicKafka = get_dempro_event_command_topic();
+%         ChannelConnIndex /= 0 ->
+%           TopicKafka = get_channel_conn_topic();
+%         ChannelDisconnIndex /= 0 ->
+%           TopicKafka = get_channel_disconn_topic();
+%         SettingsIndex + EventsIndex + MetricsIndex == 0 ->
+%           TopicKafka = get_other_messages_topic()
+%       end,
+%       produce_kafka_payload(TopicKafka, Message);
+%     TlinkFlag == false ->
+%       ?LOG_INFO("[KAFKA PLUGIN]MQTT topic prefix is not tlink = ~s~n",[Topic])
+%   end,
+%   ok.
   
-produce_kafka_payload(TopicKafka,Message) ->
-  ?LOG_INFO("[KAFKA PLUGIN]TopicKafka topic = ~s~n", [TopicKafka]),
+produce_kafka_payload(Key, Message) ->
+  Topic = get_kafka_topic(),
+  ?LOG_INFO("[KAFKA PLUGIN]TopicKafka topic = ~s~n", [Topic]),
   {ok, MessageBody} = emqx_json:safe_encode(Message),
   ?LOG_INFO("[KAFKA PLUGIN]Message = ~s~n",[MessageBody]),
   Payload = iolist_to_binary(MessageBody),
-  ekaf:produce_async(list_to_binary(TopicKafka), Payload).
+  brod:produce_cb(emqx_repost_worker, Topic, hash, Key, Payload, fun(_,_) -> ok end),
+  ok.
 
-produce_kafka_payload(TopicKafka,Topic,Message) ->
-  %%Topic = ekaf_get_topic(),
-  ?LOG_INFO("TopicKafka topic = ~s~n", [TopicKafka]),
-  {ok, MessageBody} = emqx_json:safe_encode(Message),
-  ?LOG_INFO("[KAFKA PLUGIN]Message = ~s~n",[MessageBody]),
-  Payload = iolist_to_binary(MessageBody),
-  ekaf:produce_async(TopicKafka, Payload).
 
-produce_kafka_payload(Message) ->
-  {ok, MessageBody} = emqx_json:safe_encode(Message),
-  % ?LOG_INFO("[KAFKA PLUGIN]Message = ~s~n",[MessageBody]),
-  Payload = iolist_to_binary(MessageBody),
-  ekaf:produce_async(get_other_messages_topic(), Payload).
+% produce_kafka_payload(TopicKafka,Topic,Message) ->
+%   %%Topic = ekaf_get_topic(),
+%   ?LOG_INFO("TopicKafka topic = ~s~n", [TopicKafka]),
+%   {ok, MessageBody} = emqx_json:safe_encode(Message),
+%   ?LOG_INFO("[KAFKA PLUGIN]Message = ~s~n",[MessageBody]),
+%   Payload = iolist_to_binary(MessageBody),
+%   ekaf:o(TopicKafka, Payload).
+
+% produce_kafka_payload(Message) ->
+%   {ok, MessageBody} = emqx_json:safe_encode(Message),
+%   % ?LOG_INFO("[KAFKA PLUGIN]Message = ~s~n",[MessageBody]),
+%   Payload = iolist_to_binary(MessageBody),
+%   brod:produce_cb(emqx_repost_worker, Topic, hash, Key, Payload, fun(_,_) -> ok end),
+%   ok.
 
 ntoa({0, 0, 0, 0, 0, 16#ffff, AB, CD}) ->
   inet_parse:ntoa({AB bsr 8, AB rem 256, CD bsr 8, CD rem 256});
