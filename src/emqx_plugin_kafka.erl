@@ -450,9 +450,36 @@ kafka_init(_Env) ->
   ?LOG_INFO("[KAFKA PLUGIN]KafkaConfig = ~p~n", [KafkaConfig]),
   {ok, KafkaTopic} = application:get_env(emqx_plugin_kafka, topic),
   ?LOG_INFO("[KAFKA PLUGIN]KafkaTopic = ~s~n", [KafkaTopic]),
+  KafkaSettingsTopic =  application:get_env(emqx_plugin_kafka, topic_settings),
+  KafkaEventsTopic = application:get_env(emqx_plugin_kafka, topic_events),
+  KafkaMetricsTopic = application:get_env(emqx_plugin_kafka, topic_metrics),
+  KafkaConnectedTopic = application:get_env(emqx_plugin_kafka, topic_connected),
+  KafkaDisconnectedTopic = application:get_env(emqx_plugin_kafka, topic_disconnected),
+  %KafkaOtherTopic = application:get_env(emqx_plugin_kafka, topic_others),
+  KafkaSightmindEventMetadata = application:get_env(emqx_plugin_kafka, topic_sightmind_event_metadata),
+  KafkaSightmindEventEvents = application:get_env(emqx_plugin_kafka, topic_sightmind_event_events),
+  KafkaSightmindEventCommand = application:get_env(emqx_plugin_kafka, topic_sightmind_event_command),
+  KafkaDmproEventMetadata = application:get_env(emqx_plugin_kafka, topic_dmpro_event_metadata),
+  KafkaDmproEventEvents = application:get_env(emqx_plugin_kafka, topic_dmpro_event_events),
+  KafkaDmproEventCommand = application:get_env(emqx_plugin_kafka, topic_dmpro_event_command),
+  KafkaChannelConnectedTopic = application:get_env(emqx_plugin_kafka, topic_channel_connected),
+  KafkaChannelDisconnectedTopic = application:get_env(emqx_plugin_kafka, topic_channel_disconnected),
   {ok, _} = application:ensure_all_started(brod),
   ok = brod:start_client(AddressList, emqx_repost_worker, KafkaConfig),
   ok = brod:start_producer(emqx_repost_worker, KafkaTopic, []),
+  ok = brod:start_producer(emqx_repost_worker, KafkaSettingsTopic, []),
+  ok = brod:start_producer(emqx_repost_worker, KafkaEventsTopic, []),
+  ok = brod:start_producer(emqx_repost_worker, KafkaMetricsTopic, []),
+  ok = brod:start_producer(emqx_repost_worker, KafkaConnectedTopic, []),
+  ok = brod:start_producer(emqx_repost_worker, KafkaDisconnectedTopic, []),
+  ok = brod:start_producer(emqx_repost_worker, KafkaSightmindEventMetadata, []),
+  ok = brod:start_producer(emqx_repost_worker, KafkaSightmindEventEvents, []),
+  ok = brod:start_producer(emqx_repost_worker, KafkaSightmindEventCommand, []),
+  ok = brod:start_producer(emqx_repost_worker, KafkaDmproEventMetadata, []),
+  ok = brod:start_producer(emqx_repost_worker, KafkaDmproEventEvents, []),
+  ok = brod:start_producer(emqx_repost_worker, KafkaDmproEventCommand, []),
+  ok = brod:start_producer(emqx_repost_worker, KafkaChannelConnectedTopic, []),
+  ok = brod:start_producer(emqx_repost_worker, KafkaChannelDisconnectedTopic, []),
   ?LOG_INFO("Init emqx plugin kafka successfully.....~n"),
   ok.
 
@@ -567,8 +594,64 @@ unload() ->
 %   end,
 %   ok.
   
+get_duclo_kafka_topic(Key, Message) ->
+  ?LOG_INFO("[KAFKA PLUGIN]Key = ~s~n", [Key]),
+  Topic = Message#message.topic,
+  TopicPrefix = string:left(binary_to_list(Topic),2),
+  TlinkFlag = string:equal(TopicPrefix, <<"d/">>),
+  TopicKafka = "0",
+  if
+    TlinkFlag == true ->
+      TopicStr = binary_to_list(Topic),
+      SettingsIndex = string:str(TopicStr,"d/settings"),
+      EventsIndex = string:str(TopicStr,"d/events"),
+      MetricsIndex = string:str(TopicStr,"d/metrics"),
+      SightMindMetadataIndex = string:str(TopicStr,"d/sm-metadata"),
+      SightMindEventIndex = string:str(TopicStr,"d/sm-event"),
+      SightMindCommandIndex = string:str(TopicStr,"d/sm-command"),
+      DmproMetadataIndex = string:str(TopicStr,"d/dm-metadata"),
+      DmproEventIndex = string:str(TopicStr,"d/dm-event"),
+      DmproCommandIndex = string:str(TopicStr,"d/dm-command"),
+      ChannelConnIndex = string:str(TopicStr,"d/ch/conn"),
+      ChannelDisconnIndex = string:str(TopicStr,"d/ch/disconn"), 
+      if
+        SettingsIndex /= 0 ->
+          TopicKafka = application:get_env(emqx_plugin_kafka, topic_settings);
+        MetricsIndex /= 0 ->
+          TopicKafka = application:get_env(emqx_plugin_kafka, topic_metrics);
+        EventsIndex /= 0 ->
+          TopicKafka =application:get_env(emqx_plugin_kafka, topic_events);
+        SightMindMetadataIndex /= 0 ->
+          TopicKafka = application:get_env(emqx_plugin_kafka, topic_sightmind_event_metadata);
+        SightMindEventIndex /= 0 ->
+          TopicKafka = application:get_env(emqx_plugin_kafka, topic_sightmind_event_events);
+        SightMindCommandIndex /= 0 ->
+          TopicKafka = application:get_env(emqx_plugin_kafka, topic_sightmind_event_command);
+        DmproMetadataIndex /= 0 ->
+          TopicKafka = application:get_env(emqx_plugin_kafka, topic_dmpro_event_metadata);
+        DmproEventIndex /= 0 ->
+          TopicKafka = application:get_env(emqx_plugin_kafka, topic_dmpro_event_events);
+        DmproCommandIndex /= 0 ->
+          TopicKafka = application:get_env(emqx_plugin_kafka, topic_dmpro_event_command);
+        ChannelConnIndex /= 0 ->
+          TopicKafka = application:get_env(emqx_plugin_kafka, topic_channel_connected);
+        ChannelDisconnIndex /= 0 ->
+          TopicKafka = application:get_env(emqx_plugin_kafka, topic_channel_disconnected)
+      end;
+    TlinkFlag == false ->
+      ?LOG_INFO("[KAFKA PLUGIN]MQTT topic prefix is not tlink = ~s~n",[Topic])
+  end,
+  TopicKafka.
+
 produce_kafka_payload(Key, Message) ->
-  Topic = get_kafka_topic(),
+  Topic = get_duclo_kafka_topic(Key,Message),
+  case Topic of
+      "0" -> ?LOG_INFO("[KAFKA PLUGIN]Not handling topic. = ~s~n",[Message]);
+      _ -> produce_kafka_payload(Key, Topic, Message)
+  end.
+
+produce_kafka_payload(Key, Topic, Message) ->
+  %Topic = get_kafka_topic(),
   ?LOG_INFO("[KAFKA PLUGIN]TopicKafka topic = ~s~n", [Topic]),
   {ok, MessageBody} = emqx_json:safe_encode(Message),
   ?LOG_INFO("[KAFKA PLUGIN]Message = ~s~n",[MessageBody]),
