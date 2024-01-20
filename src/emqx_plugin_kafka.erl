@@ -79,158 +79,158 @@ load(Env) ->
   emqx:hook('message.acked', {?MODULE, on_message_acked, [Env]}),
   emqx:hook('message.dropped', {?MODULE, on_message_dropped, [Env]}).
 
-  ekaf_init(_Env) ->
-    io:format("Init emqx plugin kafka....."),
-    {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
-    ?LOG_INFO("[KAFKA PLUGIN]BrokerValues = ~p~n", [BrokerValues]),
-    KafkaHost = proplists:get_value(host, BrokerValues),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaHost = ~s~n", [KafkaHost]),
-    KafkaPort = proplists:get_value(port, BrokerValues),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaPort = ~s~n", [KafkaPort]),
-    KafkaPartitionStrategy = proplists:get_value(partitionstrategy, BrokerValues),
-    KafkaPartitionWorkers = proplists:get_value(partitionworkers, BrokerValues),
-    KafkaTopic = proplists:get_value(payloadtopic, BrokerValues),
-    KafkaSettingsTopic = proplists:get_value(settings, BrokerValues),
-    KafkaEventsTopic = proplists:get_value(events, BrokerValues),
-    KafkaMetricsTopic = proplists:get_value(metrics, BrokerValues),
-    KafkaConnectedTopic = proplists:get_value(connected, BrokerValues),
-    KafkaDisconnectedTopic = proplists:get_value(disconnected, BrokerValues),
-    KafkaOtherTopic = proplists:get_value(other, BrokerValues),
-    KafkaSightmindEventMetadata = proplists:get_value(sightmind_event_metadata,BrokerValues),
-    KafkaSightmindEventEvents = proplists:get_value(sightmind_event_events,BrokerValues),
-    KafkaSightmindEventCommand = proplists:get_value(sightmind_event_command,BrokerValues),
-    KafkaDmproEventMetadata = proplists:get_value(dmpro_event_metadata,BrokerValues),
-    KafkaDmproEventEvents = proplists:get_value(dmpro_event_events,BrokerValues),
-    KafkaDmproEventCommand = proplists:get_value(dmpro_event_command,BrokerValues),
-    KafkaChannelConnectedTopic = proplists:get_value(channel_connected,BrokerValues),
-    KafkaChannelDisconnectedTopic = proplists:get_value(channel_disconnected,BrokerValues),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaTopic = ~s~n", [KafkaTopic]),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaSettingsTopic = ~s~n", [KafkaSettingsTopic]),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaEventsTopic = ~s~n", [KafkaEventsTopic]),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaMetricsTopic = ~s~n", [KafkaMetricsTopic]),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaConnectedTopic = ~s~n", [KafkaConnectedTopic]),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaDisconnectedTopic = ~s~n", [KafkaDisconnectedTopic]),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaOtherTopic = ~s~n", [KafkaOtherTopic]),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaSightmindEventMetadata = ~s~n", [KafkaSightmindEventMetadata]),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaSightmindEventEvents = ~s~n", [KafkaSightmindEventEvents]),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaSightmindEventCommand = ~s~n", [KafkaSightmindEventCommand]),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventMetadata = ~s~n", [KafkaDmproEventMetadata]),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventEvents = ~s~n", [KafkaDmproEventEvents]),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventCommand = ~s~n", [KafkaDmproEventCommand]),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaChannelConnectedTopic = ~s~n", [KafkaChannelConnectedTopic]),
-    ?LOG_INFO("[KAFKA PLUGIN]KafkaChannelDisconnectedTopic = ~s~n", [KafkaChannelDisconnectedTopic]),
-    application:set_env(emqx_plugin_kafka, settings_topic, list_to_binary(KafkaSettingsTopic)),
-    application:set_env(ekaf, ekaf_bootstrap_broker, {KafkaHost, list_to_integer(KafkaPort)}),
-    application:set_env(ekaf, ekaf_partition_strategy, list_to_atom(KafkaPartitionStrategy)),
-    application:set_env(ekaf, ekaf_per_partition_workers, KafkaPartitionWorkers),
-  % We want lazy loading approach, so not going to support ekaf_bootstrap_topics  
-  %  application:set_env(ekaf, ekaf_bootstrap_topics, list_to_binary(KafkaTopic)),
-    application:set_env(ekaf, ekaf_buffer_ttl, 10),
-    application:set_env(ekaf, ekaf_max_downtime_buffer_size, 5),
-    % {ok, _} = application:ensure_all_started(kafkamocker),
-    {ok, _} = application:ensure_all_started(gproc),
-    % {ok, _} = application:ensure_all_started(ranch),
-    {ok, _} = application:ensure_all_started(ekaf).
+  % ekaf_init(_Env) ->
+  %   io:format("Init emqx plugin kafka....."),
+  %   {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+  %   ?LOG_INFO("[KAFKA PLUGIN]BrokerValues = ~p~n", [BrokerValues]),
+  %   KafkaHost = proplists:get_value(host, BrokerValues),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaHost = ~s~n", [KafkaHost]),
+  %   KafkaPort = proplists:get_value(port, BrokerValues),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaPort = ~s~n", [KafkaPort]),
+  %   KafkaPartitionStrategy = proplists:get_value(partitionstrategy, BrokerValues),
+  %   KafkaPartitionWorkers = proplists:get_value(partitionworkers, BrokerValues),
+  %   KafkaTopic = proplists:get_value(payloadtopic, BrokerValues),
+  %   KafkaSettingsTopic = proplists:get_value(settings, BrokerValues),
+  %   KafkaEventsTopic = proplists:get_value(events, BrokerValues),
+  %   KafkaMetricsTopic = proplists:get_value(metrics, BrokerValues),
+  %   KafkaConnectedTopic = proplists:get_value(connected, BrokerValues),
+  %   KafkaDisconnectedTopic = proplists:get_value(disconnected, BrokerValues),
+  %   KafkaOtherTopic = proplists:get_value(other, BrokerValues),
+  %   KafkaSightmindEventMetadata = proplists:get_value(sightmind_event_metadata,BrokerValues),
+  %   KafkaSightmindEventEvents = proplists:get_value(sightmind_event_events,BrokerValues),
+  %   KafkaSightmindEventCommand = proplists:get_value(sightmind_event_command,BrokerValues),
+  %   KafkaDmproEventMetadata = proplists:get_value(dmpro_event_metadata,BrokerValues),
+  %   KafkaDmproEventEvents = proplists:get_value(dmpro_event_events,BrokerValues),
+  %   KafkaDmproEventCommand = proplists:get_value(dmpro_event_command,BrokerValues),
+  %   KafkaChannelConnectedTopic = proplists:get_value(channel_connected,BrokerValues),
+  %   KafkaChannelDisconnectedTopic = proplists:get_value(channel_disconnected,BrokerValues),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaTopic = ~s~n", [KafkaTopic]),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaSettingsTopic = ~s~n", [KafkaSettingsTopic]),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaEventsTopic = ~s~n", [KafkaEventsTopic]),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaMetricsTopic = ~s~n", [KafkaMetricsTopic]),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaConnectedTopic = ~s~n", [KafkaConnectedTopic]),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaDisconnectedTopic = ~s~n", [KafkaDisconnectedTopic]),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaOtherTopic = ~s~n", [KafkaOtherTopic]),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaSightmindEventMetadata = ~s~n", [KafkaSightmindEventMetadata]),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaSightmindEventEvents = ~s~n", [KafkaSightmindEventEvents]),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaSightmindEventCommand = ~s~n", [KafkaSightmindEventCommand]),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventMetadata = ~s~n", [KafkaDmproEventMetadata]),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventEvents = ~s~n", [KafkaDmproEventEvents]),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventCommand = ~s~n", [KafkaDmproEventCommand]),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaChannelConnectedTopic = ~s~n", [KafkaChannelConnectedTopic]),
+  %   ?LOG_INFO("[KAFKA PLUGIN]KafkaChannelDisconnectedTopic = ~s~n", [KafkaChannelDisconnectedTopic]),
+  %   application:set_env(emqx_plugin_kafka, settings_topic, list_to_binary(KafkaSettingsTopic)),
+  %   application:set_env(ekaf, ekaf_bootstrap_broker, {KafkaHost, list_to_integer(KafkaPort)}),
+  %   application:set_env(ekaf, ekaf_partition_strategy, list_to_atom(KafkaPartitionStrategy)),
+  %   application:set_env(ekaf, ekaf_per_partition_workers, KafkaPartitionWorkers),
+  % % We want lazy loading approach, so not going to support ekaf_bootstrap_topics  
+  % %  application:set_env(ekaf, ekaf_bootstrap_topics, list_to_binary(KafkaTopic)),
+  %   application:set_env(ekaf, ekaf_buffer_ttl, 10),
+  %   application:set_env(ekaf, ekaf_max_downtime_buffer_size, 5),
+  %   % {ok, _} = application:ensure_all_started(kafkamocker),
+  %   {ok, _} = application:ensure_all_started(gproc),
+  %   % {ok, _} = application:ensure_all_started(ranch),
+  %   {ok, _} = application:ensure_all_started(ekaf).
 
-get_settings_topic() ->
-%  ?LOG_INFO("[KAFKA PLUGIN]>> get_settings_topic"),
-  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
-  Topic = proplists:get_value(settings, BrokerValues),
-  Topic.
-%  test = application:get_env(emqx_plugin_kafka, settings_topic),
-%  {ok, Topic} =  application:get_env(emqx_plugin_kafka, settings),
-%  ?LOG_INFO("[KAFKA PLUGIN] settings_topic = ~s~n", [test]),
-%  Topic = <<ek_emqx_settings>>,
-%  Topic.
+% get_settings_topic() ->
+% %  ?LOG_INFO("[KAFKA PLUGIN]>> get_settings_topic"),
+%   {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+%   Topic = proplists:get_value(settings, BrokerValues),
+%   Topic.
+% %  test = application:get_env(emqx_plugin_kafka, settings_topic),
+% %  {ok, Topic} =  application:get_env(emqx_plugin_kafka, settings),
+% %  ?LOG_INFO("[KAFKA PLUGIN] settings_topic = ~s~n", [test]),
+% %  Topic = <<ek_emqx_settings>>,
+% %  Topic.
 
-get_events_topic() ->
-  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
-  Topic = proplists:get_value(events, BrokerValues),
-  Topic.
-%  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
-%  {ok, Topic} = proplists:get_value(<<"events">>, BrokerValues),
-%  Topic.
+% get_events_topic() ->
+%   {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+%   Topic = proplists:get_value(events, BrokerValues),
+%   Topic.
+% %  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+% %  {ok, Topic} = proplists:get_value(<<"events">>, BrokerValues),
+% %  Topic.
 
-get_metrics_topic() ->
-  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
-  Topic = proplists:get_value(metrics, BrokerValues),
-  Topic.
+% get_metrics_topic() ->
+%   {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+%   Topic = proplists:get_value(metrics, BrokerValues),
+%   Topic.
 
-get_client_connected_topic() ->
-%  {ok, Topic} =  application:get_env(emqx_plugin_kafka, connected),
-%  Topic.
-  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
-  Topic = proplists:get_value(connected, BrokerValues),
-%  Topic = <<ek_emqx_connected>>,
-  Topic.
+% get_client_connected_topic() ->
+% %  {ok, Topic} =  application:get_env(emqx_plugin_kafka, connected),
+% %  Topic.
+%   {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+%   Topic = proplists:get_value(connected, BrokerValues),
+% %  Topic = <<ek_emqx_connected>>,
+%   Topic.
 
-%  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
-%  {ok, Topic} = proplists:get_value(<<"connected">>, BrokerValues),
-%  Topic.
+% %  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+% %  {ok, Topic} = proplists:get_value(<<"connected">>, BrokerValues),
+% %  Topic.
 
-get_client_disconnected_topic() ->
-%  {ok, Topic} =  application:get_env(emqx_plugin_kafka, disconnected),
-%  Topic.
-%  Topic = <<ek_emqx_disconnected>>,
-  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
-  Topic = proplists:get_value(disconnected, BrokerValues),
-  Topic.
-%
-%  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
-%  {ok, Topic} = proplists:get_value(<<"disconnected">>, BrokerValues),
-%  Topic.
+% get_client_disconnected_topic() ->
+% %  {ok, Topic} =  application:get_env(emqx_plugin_kafka, disconnected),
+% %  Topic.
+% %  Topic = <<ek_emqx_disconnected>>,
+%   {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+%   Topic = proplists:get_value(disconnected, BrokerValues),
+%   Topic.
+% %
+% %  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+% %  {ok, Topic} = proplists:get_value(<<"disconnected">>, BrokerValues),
+% %  Topic.
 
-get_other_messages_topic() ->
-%  {ok, Topic} =  application:get_env(emqx_plugin_kafka, other),
-%  Topic.
-%  Topic = <<ek_emqx_msg>>,
-  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
-  Topic = proplists:get_value(other, BrokerValues),
-  Topic.
-%
-%  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
-%  {ok, Topic} = proplists:get_value(<<"other">>, BrokerValues),
-%  Topic.
+% get_other_messages_topic() ->
+% %  {ok, Topic} =  application:get_env(emqx_plugin_kafka, other),
+% %  Topic.
+% %  Topic = <<ek_emqx_msg>>,
+%   {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+%   Topic = proplists:get_value(other, BrokerValues),
+%   Topic.
+% %
+% %  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+% %  {ok, Topic} = proplists:get_value(<<"other">>, BrokerValues),
+% %  Topic.
 
-get_sightmind_event_metadata_topic() ->
-  {ok,BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
-  Topic = proplists:get_value(sightmind_event_metadata,BrokerValues),
-  Topic.
+% get_sightmind_event_metadata_topic() ->
+%   {ok,BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+%   Topic = proplists:get_value(sightmind_event_metadata,BrokerValues),
+%   Topic.
 
-get_sightmind_event_event_topic() ->
-    {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
-    Topic = proplists:get_value(sightmind_event_events,BrokerValues),
-    Topic.
+% get_sightmind_event_event_topic() ->
+%     {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+%     Topic = proplists:get_value(sightmind_event_events,BrokerValues),
+%     Topic.
 
-get_sightmind_event_command_topic() ->
-  {ok,BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
-  Topic = proplists:get_value(sightmind_event_command,BrokerValues),
-  Topic.
+% get_sightmind_event_command_topic() ->
+%   {ok,BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
+%   Topic = proplists:get_value(sightmind_event_command,BrokerValues),
+%   Topic.
 
-get_dmpro_event_metadata_topic() ->
-  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
-  Topic = proplists:get_value(dmpro_event_metadata,BrokerValues),
-  Topic.
+% get_dmpro_event_metadata_topic() ->
+%   {ok, BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
+%   Topic = proplists:get_value(dmpro_event_metadata,BrokerValues),
+%   Topic.
 
-get_dmpro_event_event_topic() ->
-  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
-  Topic = proplists:get_value(dmpro_event_events,BrokerValues),
-  Topic.
+% get_dmpro_event_event_topic() ->
+%   {ok, BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
+%   Topic = proplists:get_value(dmpro_event_events,BrokerValues),
+%   Topic.
 
-get_dempro_event_command_topic() ->
-  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
-  Topic = proplists:get_value(dmpro_event_command,BrokerValues),
-  Topic.
+% get_dempro_event_command_topic() ->
+%   {ok, BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
+%   Topic = proplists:get_value(dmpro_event_command,BrokerValues),
+%   Topic.
 
-get_channel_conn_topic() ->
-  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
-  Topic = proplists:get_value(channel_connected,BrokerValues),
-  Topic.
+% get_channel_conn_topic() ->
+%   {ok, BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
+%   Topic = proplists:get_value(channel_connected,BrokerValues),
+%   Topic.
 
-get_channel_disconn_topic() ->
-  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
-  Topic = proplists:get_value(channel_disconnected,BrokerValues),
-  Topic.
+% get_channel_disconn_topic() ->
+%   {ok, BrokerValues} = application:get_env(emqx_plugin_kafka,broker),
+%   Topic = proplists:get_value(channel_disconnected,BrokerValues),
+%   Topic.
 
 on_client_connect(ConnInfo = #{clientid := ClientId}, Props, _Env) ->
   ?LOG_INFO("[KAFKA PLUGIN]Client(~s) connect, ConnInfo: ~p, Props: ~p~n",
@@ -260,7 +260,8 @@ on_client_connected(ClientInfo = #{clientid := ClientId}, ConnInfo, _Env) ->
     {ts, Now},
     {online, Online}
   ],
-  produce_kafka_payload(ClientId, Payload),
+  {ok, KafkaConnectedTopic} = application:get_env(emqx_plugin_kafka, topic_connected),
+  produce_kafka_payload(ClientId, KafkaConnectedTopic, Payload),
   ok.
 
 on_client_disconnected(ClientInfo = #{clientid := ClientId}, ReasonCode, ConnInfo, _Env) ->
@@ -277,7 +278,8 @@ on_client_disconnected(ClientInfo = #{clientid := ClientId}, ReasonCode, ConnInf
     {ts, Now},
     {online, Online}
   ],
-  produce_kafka_payload(ClientId, Payload),
+  {ok, KafkaDisconnectedTopic} = application:get_env(emqx_plugin_kafka, topic_disconnected),
+  produce_kafka_payload(ClientId, KafkaDisconnectedTopic, Payload),
   ok.
 
 on_client_authenticate(_ClientInfo = #{clientid := ClientId}, Result, _Env) ->
@@ -285,13 +287,13 @@ on_client_authenticate(_ClientInfo = #{clientid := ClientId}, Result, _Env) ->
   ok.
 
 on_client_check_acl(_ClientInfo = #{clientid := ClientId}, Topic, PubSub, Result, _Env) ->
-  ?LOG_INFO("[KAFKA PLUGIN]Client(~s) check_acl, PubSub:~p, Topic:~p, Result:~p~n",
+  ?LOG_DEBUG("[KAFKA PLUGIN]Client(~s) check_acl, PubSub:~p, Topic:~p, Result:~p~n",
     [ClientId, PubSub, Topic, Result]),
   ok.
 
 %%---------------------------client subscribe start--------------------------%%
 on_client_subscribe(#{clientid := ClientId}, _Properties, TopicFilters, _Env) ->
-  ?LOG_INFO("[KAFKA PLUGIN]Client(~s) will subscribe: ~p~n", [ClientId, TopicFilters]),
+  ?LOG_DEBUG("[KAFKA PLUGIN]Client(~s) will subscribe: ~p~n", [ClientId, TopicFilters]),
   Topic = erlang:element(1, erlang:hd(TopicFilters)),
   Qos = erlang:element(2, lists:last(TopicFilters)),
   Action = <<"subscribe">>,
@@ -303,11 +305,11 @@ on_client_subscribe(#{clientid := ClientId}, _Properties, TopicFilters, _Env) ->
     {qos, maps:get(qos, Qos)},
     {ts, Now}
   ],
-  produce_kafka_payload(ClientId, Payload),
+  %produce_kafka_payload(ClientId, Payload),
   ok.
 %%---------------------client subscribe stop----------------------%%
 on_client_unsubscribe(#{clientid := ClientId}, _Properties, TopicFilters, _Env) ->
-  ?LOG_INFO("[KAFKA PLUGIN]Client(~s) will unsubscribe ~p~n", [ClientId, TopicFilters]),
+  ?LOG_DEBUG("[KAFKA PLUGIN]Client(~s) will unsubscribe ~p~n", [ClientId, TopicFilters]),
   Topic = erlang:element(1, erlang:hd(TopicFilters)),
   Action = <<"unsubscribe">>,
   Now = now_mill_secs(os:timestamp()),
@@ -317,7 +319,7 @@ on_client_unsubscribe(#{clientid := ClientId}, _Properties, TopicFilters, _Env) 
     {topic, Topic},
     {ts, Now}
   ],
-  produce_kafka_payload(ClientId, Payload),
+  %produce_kafka_payload(ClientId, Payload),
   ok.
 
 on_message_dropped(#message{topic = <<"$SYS/", _/binary>>}, _By, _Reason, _Env) ->
@@ -337,11 +339,12 @@ on_message_dropped(Message, _By = #{node := Node}, Reason, _Env) ->
 on_message_publish(Message = #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
   ok;
 on_message_publish(Message, _Env) ->
+  Topic = Message#message.topic,
   {ok, ClientId, Payload} = format_payload(Message),
   From = Message#message.from,  
   ?LOG_INFO("[KAFKA PLUGIN]Message published to client(~s): ~s~n",
     [From, emqx_message:format(Message)]),
-  produce_kafka_payload(ClientId, Payload),
+  produce_kafka_payload(ClientId, Topic, From, Payload),
   ok.
 %%---------------------message publish stop----------------------%%
 
@@ -367,7 +370,7 @@ on_message_publish(Message, _Env) ->
 %%---------------------message publish stop----------------------%%
 
 on_message_delivered(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
-  ?LOG_INFO("[KAFKA PLUGIN]Message delivered to client(~s): ~s~n",
+  ?LOG_DEBUG("[KAFKA PLUGIN]Message delivered to client(~s): ~s~n",
     [ClientId, emqx_message:format(Message)]),
   Topic = Message#message.topic,
   Payload = transform_payload(Message#message.payload),
@@ -384,11 +387,11 @@ on_message_delivered(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
     {cluster_node, node()},
     {ts, Timestamp}
   ],
-  produce_kafka_payload(ClientId, Content),
+  %produce_kafka_payload(ClientId, Content),
   ok.
 
 on_message_acked(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
-  ?LOG_INFO("[KAFKA PLUGIN]Message acked by client(~s): ~s~n",
+  ?LOG_DEBUG("[KAFKA PLUGIN]Message acked by client(~s): ~s~n",
     [ClientId, emqx_message:format(Message)]),
   Topic = Message#message.topic,
   Payload = transform_payload(Message#message.payload),
@@ -413,44 +416,46 @@ on_message_acked(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
 %%--------------------------------------------------------------------
 
 on_session_created(#{clientid := ClientId}, SessInfo, _Env) ->
-  ?LOG_INFO("[KAFKA PLUGIN]Session(~s) created, Session Info:~n~p~n", [ClientId, SessInfo]),
+  ?LOG_DEBUG("[KAFKA PLUGIN]Session(~s) created, Session Info:~n~p~n", [ClientId, SessInfo]),
   ok.
 
 
 on_session_subscribed(#{clientid := ClientId}, Topic, SubOpts, _Env) ->
-  ?LOG_INFO("[KAFKA PLUGIN]Session(~s) subscribed ~s with subopts: ~p~n", [ClientId, Topic, SubOpts]),
+  ?LOG_DEBUG("[KAFKA PLUGIN]Session(~s) subscribed ~s with subopts: ~p~n", [ClientId, Topic, SubOpts]),
   ok.
 
 on_session_unsubscribed(#{clientid := ClientId}, Topic, Opts, _Env) ->
-  ?LOG_INFO("[KAFKA PLUGIN]Session(~s) unsubscribed ~s with opts: ~p~n", [ClientId, Topic, Opts]),
+  ?LOG_DEBUG("[KAFKA PLUGIN]Session(~s) unsubscribed ~s with opts: ~p~n", [ClientId, Topic, Opts]),
   ok.
 
 on_session_resumed(#{clientid := ClientId}, SessInfo, _Env) ->
-  ?LOG_INFO("[KAFKA PLUGIN]Session(~s) resumed, Session Info:~n~p~n", [ClientId, SessInfo]),
+  ?LOG_DEBUG("[KAFKA PLUGIN]Session(~s) resumed, Session Info:~n~p~n", [ClientId, SessInfo]),
   ok.
 
 on_session_discarded(_ClientInfo = #{clientid := ClientId}, SessInfo, _Env) ->
-  ?LOG_INFO("[KAFKA PLUGIN]Session(~s) is discarded. Session Info: ~p~n", [ClientId, SessInfo]),
+  ?LOG_DEBUG("[KAFKA PLUGIN]Session(~s) is discarded. Session Info: ~p~n", [ClientId, SessInfo]),
   ok.
 
 on_session_takeovered(_ClientInfo = #{clientid := ClientId}, SessInfo, _Env) ->
-  ?LOG_INFO("[KAFKA PLUGIN]Session(~s) is takeovered. Session Info: ~p~n", [ClientId, SessInfo]),
+  ?LOG_DEBUG("[KAFKA PLUGIN]Session(~s) is takeovered. Session Info: ~p~n", [ClientId, SessInfo]),
   ok.
 
 on_session_terminated(_ClientInfo = #{clientid := ClientId}, Reason, SessInfo, _Env) ->
-  ?LOG_INFO("[KAFKA PLUGIN]Session(~s) is terminated due to ~p~nSession Info: ~p~n",
+  ?LOG_DEBUG("[KAFKA PLUGIN]Session(~s) is terminated due to ~p~nSession Info: ~p~n",
     [ClientId, Reason, SessInfo]),
   ok.
 
 kafka_init(_Env) ->
+  ?LOG_INFO("LET'S F'N GO!!"),
   ?LOG_INFO("Start to init emqx plugin kafka..... ~n"),
   {ok, AddressList} = application:get_env(emqx_plugin_kafka, kafka_address_list),
   ?LOG_INFO("[KAFKA PLUGIN]KafkaAddressList = ~p~n", [AddressList]),
   {ok, KafkaConfig} = application:get_env(emqx_plugin_kafka, kafka_config),
   ?LOG_INFO("[KAFKA PLUGIN]KafkaConfig = ~p~n", [KafkaConfig]),
+  {ok, KafkaSettingsTopic} =  application:get_env(emqx_plugin_kafka, topic_settings),
+  ?LOG_INFO("[KAFKA PLUGIN]KafkaSettingsTopic = ~s~n", [KafkaSettingsTopic]),
   {ok, KafkaTopic} = application:get_env(emqx_plugin_kafka, topic),
   ?LOG_INFO("[KAFKA PLUGIN]KafkaTopic = ~s~n", [KafkaTopic]),
-  {ok, KafkaSettingsTopic} =  application:get_env(emqx_plugin_kafka, topic_settings),
   {ok, KafkaEventsTopic} = application:get_env(emqx_plugin_kafka, topic_events),
   {ok, KafkaMetricsTopic} = application:get_env(emqx_plugin_kafka, topic_metrics),
   {ok, KafkaConnectedTopic} = application:get_env(emqx_plugin_kafka, topic_connected),
@@ -465,8 +470,6 @@ kafka_init(_Env) ->
   {ok, KafkaChannelConnectedTopic} = application:get_env(emqx_plugin_kafka, topic_channel_connected),
   {ok, KafkaChannelDisconnectedTopic} = application:get_env(emqx_plugin_kafka, topic_channel_disconnected),
 
-  ?LOG_INFO("[KAFKA PLUGIN]KafkaTopic = ~s~n", [KafkaTopic]),
-  ?LOG_INFO("[KAFKA PLUGIN]KafkaSettingsTopic = ~s~n", [KafkaSettingsTopic]),
   ?LOG_INFO("[KAFKA PLUGIN]KafkaEventsTopic = ~s~n", [KafkaEventsTopic]),
   ?LOG_INFO("[KAFKA PLUGIN]KafkaMetricsTopic = ~s~n", [KafkaMetricsTopic]),
   ?LOG_INFO("[KAFKA PLUGIN]KafkaConnectedTopic = ~s~n", [KafkaConnectedTopic]),
@@ -610,15 +613,19 @@ unload() ->
 %   end,
 %   ok.
   
-get_duclo_kafka_topic(Key, Message) ->
-  ?LOG_INFO("[KAFKA PLUGIN]Key = ~s~n", [Key]),
-  Topic = Message#message.topic,
+get_duclo_kafka_topic(Topic) ->
+  ?LOG_INFO("[KAFKA PLUGIN] >> get_duclo_kafka_topic ~n"),
+  %?LOG_INFO("[KAFKA PLUGIN]Key = ~s~n", [Key]),
+  %?LOG_INFO("[KAFKA PLUGIN]Msg = ~s~n", [Message]),
+  %Topic = Message#message.topic,
+  ?LOG_INFO("[KAFKA PLUGIN]Topic = ~p~n", [Topic]),
   TopicPrefix = string:left(binary_to_list(Topic),2),
   TlinkFlag = string:equal(TopicPrefix, <<"d/">>),
   TopicKafka = "0",
   if
     TlinkFlag == true ->
       TopicStr = binary_to_list(Topic),
+      ?LOG_INFO("[KAFKA PLUGIN]TopicStr = ~s~n", [TopicStr]),
       SettingsIndex = string:str(TopicStr,"d/settings"),
       EventsIndex = string:str(TopicStr,"d/events"),
       MetricsIndex = string:str(TopicStr,"d/metrics"),
@@ -630,40 +637,44 @@ get_duclo_kafka_topic(Key, Message) ->
       DmproCommandIndex = string:str(TopicStr,"d/dm-command"),
       ChannelConnIndex = string:str(TopicStr,"d/ch/conn"),
       ChannelDisconnIndex = string:str(TopicStr,"d/ch/disconn"), 
+      ?LOG_INFO("[KAFKA PLUGIN]Determining Kafka Index = ~p~n", [ChannelConnIndex]),
       if
         SettingsIndex /= 0 ->
-          TopicKafka = application:get_env(emqx_plugin_kafka, topic_settings);
+          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_settings);
         MetricsIndex /= 0 ->
-          TopicKafka = application:get_env(emqx_plugin_kafka, topic_metrics);
+          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_metrics);
         EventsIndex /= 0 ->
-          TopicKafka =application:get_env(emqx_plugin_kafka, topic_events);
+          {ok,TopicKafka} =application:get_env(emqx_plugin_kafka, topic_events);
         SightMindMetadataIndex /= 0 ->
-          TopicKafka = application:get_env(emqx_plugin_kafka, topic_sightmind_event_metadata);
+          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_sightmind_event_metadata);
         SightMindEventIndex /= 0 ->
-          TopicKafka = application:get_env(emqx_plugin_kafka, topic_sightmind_event_events);
+          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_sightmind_event_events);
         SightMindCommandIndex /= 0 ->
-          TopicKafka = application:get_env(emqx_plugin_kafka, topic_sightmind_event_command);
+          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_sightmind_event_command);
         DmproMetadataIndex /= 0 ->
-          TopicKafka = application:get_env(emqx_plugin_kafka, topic_dmpro_event_metadata);
+          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_dmpro_event_metadata);
         DmproEventIndex /= 0 ->
-          TopicKafka = application:get_env(emqx_plugin_kafka, topic_dmpro_event_events);
+          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_dmpro_event_events);
         DmproCommandIndex /= 0 ->
-          TopicKafka = application:get_env(emqx_plugin_kafka, topic_dmpro_event_command);
+          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_dmpro_event_command);
         ChannelConnIndex /= 0 ->
-          TopicKafka = application:get_env(emqx_plugin_kafka, topic_channel_connected);
+          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_channel_connected);
         ChannelDisconnIndex /= 0 ->
-          TopicKafka = application:get_env(emqx_plugin_kafka, topic_channel_disconnected)
-      end;
+          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_channel_disconnected)
+      end,
+      ?LOG_INFO("[KAFKA PLUGIN]Handling TopicKafka = ~p~n", [TopicKafka]);
     TlinkFlag == false ->
-      ?LOG_INFO("[KAFKA PLUGIN]MQTT topic prefix is not tlink = ~s~n",[Topic])
+      ?LOG_INFO("[KAFKA PLUGIN]MQTT topic prefix is not tlink = ~p~n",[Topic])
   end,
+  ?LOG_INFO("[KAFKA PLUGIN]Handling TopicKafka = ~p~n", [TopicKafka]),
   TopicKafka.
 
-produce_kafka_payload(Key, Message) ->
-  Topic = get_duclo_kafka_topic(Key,Message),
-  case Topic of
+produce_kafka_payload(Key, Topic, From, Message) ->
+  {ok,TopicKafka} = get_duclo_kafka_topic(Topic),
+  ?LOG_INFO("[KAFKA PLUGIN]Handling Topic = ~s~n", [TopicKafka]),
+  case TopicKafka of
       "0" -> ?LOG_INFO("[KAFKA PLUGIN]Not handling topic. = ~s~n",[Message]);
-      _ -> produce_kafka_payload(Key, Topic, Message)
+      _ -> produce_kafka_payload(Key, TopicKafka, Message)
   end.
 
 produce_kafka_payload(Key, Topic, Message) ->
