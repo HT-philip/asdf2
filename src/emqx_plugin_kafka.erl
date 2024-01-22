@@ -26,6 +26,7 @@
 -include_lib("kernel/include/logger.hrl").
 
 -export([load/1, unload/0]).
+-import(lists, [map/2]).
 
 %% Client Lifecircle Hooks
 -export([on_client_connect/3
@@ -260,7 +261,9 @@ on_client_connected(ClientInfo = #{clientid := ClientId}, ConnInfo, _Env) ->
     {ts, Now},
     {online, Online}
   ],
-  {ok, KafkaConnectedTopic} = application:get_env(emqx_plugin_kafka, topic_connected),
+  {ok, KafkaTopics} =  application:get_env(emqx_plugin_kafka, connect_kafka_topics),
+  KafkaConnectedTopic = proplists:get_value("connected", KafkaTopics),
+  %?LOG_INFO("[KAFKA PLUGIN]KafkaConnectedTopic = ~s", [KafkaConnectedTopic]),
   produce_kafka_payload(ClientId, KafkaConnectedTopic, Payload),
   ok.
 
@@ -278,7 +281,8 @@ on_client_disconnected(ClientInfo = #{clientid := ClientId}, ReasonCode, ConnInf
     {ts, Now},
     {online, Online}
   ],
-  {ok, KafkaDisconnectedTopic} = application:get_env(emqx_plugin_kafka, topic_disconnected),
+  {ok, KafkaTopics} =  application:get_env(emqx_plugin_kafka, connect_kafka_topics),
+  KafkaDisconnectedTopic = proplists:get_value("disconnected", KafkaTopics),
   produce_kafka_payload(ClientId, KafkaDisconnectedTopic, Payload),
   ok.
 
@@ -445,6 +449,14 @@ on_session_terminated(_ClientInfo = #{clientid := ClientId}, Reason, SessInfo, _
     [ClientId, Reason, SessInfo]),
   ok.
 
+
+ 
+do_connect_topic(Topic) ->
+  ?LOG_INFO("[KAFKA PLUGIN]Start kafka producer ~p~n", [Topic]),
+  ok = brod:start_producer(emqx_repost_worker, Topic, []),
+  ok.
+
+
 kafka_init(_Env) ->
   ?LOG_INFO("LET'S F'N GO!!"),
   ?LOG_INFO("Start to init emqx plugin kafka..... ~n"),
@@ -452,53 +464,60 @@ kafka_init(_Env) ->
   ?LOG_INFO("[KAFKA PLUGIN]KafkaAddressList = ~p~n", [AddressList]),
   {ok, KafkaConfig} = application:get_env(emqx_plugin_kafka, kafka_config),
   ?LOG_INFO("[KAFKA PLUGIN]KafkaConfig = ~p~n", [KafkaConfig]),
-  {ok, KafkaSettingsTopic} =  application:get_env(emqx_plugin_kafka, topic_settings),
-  ?LOG_INFO("[KAFKA PLUGIN]KafkaSettingsTopic = ~s~n", [KafkaSettingsTopic]),
+  {ok, KafkaTopics} =  application:get_env(emqx_plugin_kafka, connect_kafka_topics),
+  ?LOG_INFO("[KAFKA PLUGIN]KafkaTopics = ~p~n", [KafkaTopics]),
   {ok, KafkaTopic} = application:get_env(emqx_plugin_kafka, topic),
   ?LOG_INFO("[KAFKA PLUGIN]KafkaTopic = ~s~n", [KafkaTopic]),
-  {ok, KafkaEventsTopic} = application:get_env(emqx_plugin_kafka, topic_events),
-  {ok, KafkaMetricsTopic} = application:get_env(emqx_plugin_kafka, topic_metrics),
-  {ok, KafkaConnectedTopic} = application:get_env(emqx_plugin_kafka, topic_connected),
-  {ok, KafkaDisconnectedTopic}= application:get_env(emqx_plugin_kafka, topic_disconnected),
-  %KafkaOtherTopic = application:get_env(emqx_plugin_kafka, topic_others),
-  {ok, KafkaSightmindEventMetadata} = application:get_env(emqx_plugin_kafka, topic_sightmind_event_metadata),
-  {ok, KafkaSightmindEventEvents} = application:get_env(emqx_plugin_kafka, topic_sightmind_event_events),
-  {ok, KafkaSightmindEventCommand} = application:get_env(emqx_plugin_kafka, topic_sightmind_event_command),
-  {ok, KafkaDmproEventMetadata} = application:get_env(emqx_plugin_kafka, topic_dmpro_event_metadata),
-  {ok, KafkaDmproEventEvents} = application:get_env(emqx_plugin_kafka, topic_dmpro_event_events),
-  {ok, KafkaDmproEventCommand} = application:get_env(emqx_plugin_kafka, topic_dmpro_event_command),
-  {ok, KafkaChannelConnectedTopic} = application:get_env(emqx_plugin_kafka, topic_channel_connected),
-  {ok, KafkaChannelDisconnectedTopic} = application:get_env(emqx_plugin_kafka, topic_channel_disconnected),
 
-  ?LOG_INFO("[KAFKA PLUGIN]KafkaEventsTopic = ~s~n", [KafkaEventsTopic]),
-  ?LOG_INFO("[KAFKA PLUGIN]KafkaMetricsTopic = ~s~n", [KafkaMetricsTopic]),
-  ?LOG_INFO("[KAFKA PLUGIN]KafkaConnectedTopic = ~s~n", [KafkaConnectedTopic]),
-  ?LOG_INFO("[KAFKA PLUGIN]KafkaDisconnectedTopic = ~s~n", [KafkaDisconnectedTopic]),
-  ?LOG_INFO("[KAFKA PLUGIN]KafkaSightmindEventMetadata = ~s~n", [KafkaSightmindEventMetadata]),
-  ?LOG_INFO("[KAFKA PLUGIN]KafkaSightmindEventEvents = ~s~n", [KafkaSightmindEventEvents]),
-  ?LOG_INFO("[KAFKA PLUGIN]KafkaSightmindEventCommand = ~s~n", [KafkaSightmindEventCommand]),
-  ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventMetadata = ~s~n", [KafkaDmproEventMetadata]),
-  ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventEvents = ~s~n", [KafkaDmproEventEvents]),
-  ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventCommand = ~s~n", [KafkaDmproEventCommand]),
-  ?LOG_INFO("[KAFKA PLUGIN]KafkaChannelConnectedTopic = ~s~n", [KafkaChannelConnectedTopic]),
-  ?LOG_INFO("[KAFKA PLUGIN]KafkaChannelDisconnectedTopic = ~s~n", [KafkaChannelDisconnectedTopic]),
+  % {ok, KafkaEventsTopic} = application:get_env(emqx_plugin_kafka, topic_events),
+  % {ok, KafkaMetricsTopic} = application:get_env(emqx_plugin_kafka, topic_metrics),
+  % {ok, KafkaConnectedTopic} = application:get_env(emqx_plugin_kafka, topic_connected),
+  % {ok, KafkaDisconnectedTopic}= application:get_env(emqx_plugin_kafka, topic_disconnected),
+  % %KafkaOtherTopic = application:get_env(emqx_plugin_kafka, topic_others),
+  % {ok, KafkaSightmindEventMetadata} = application:get_env(emqx_plugin_kafka, topic_sightmind_event_metadata),
+  % {ok, KafkaSightmindEventEvents} = application:get_env(emqx_plugin_kafka, topic_sightmind_event_events),
+  % {ok, KafkaSightmindEventCommand} = application:get_env(emqx_plugin_kafka, topic_sightmind_event_command),
+  % {ok, KafkaDmproEventMetadata} = application:get_env(emqx_plugin_kafka, topic_dmpro_event_metadata),
+  % {ok, KafkaDmproEventEvents} = application:get_env(emqx_plugin_kafka, topic_dmpro_event_events),
+  % {ok, KafkaDmproEventCommand} = application:get_env(emqx_plugin_kafka, topic_dmpro_event_command),
+  % {ok, KafkaChannelConnectedTopic} = application:get_env(emqx_plugin_kafka, topic_channel_connected),
+  % {ok, KafkaChannelDisconnectedTopic} = application:get_env(emqx_plugin_kafka, topic_channel_disconnected),
+
+  % ?LOG_INFO("[KAFKA PLUGIN]KafkaEventsTopic = ~s~n", [KafkaEventsTopic]),
+  % ?LOG_INFO("[KAFKA PLUGIN]KafkaMetricsTopic = ~s~n", [KafkaMetricsTopic]),
+  % ?LOG_INFO("[KAFKA PLUGIN]KafkaConnectedTopic = ~s~n", [KafkaConnectedTopic]),
+  % ?LOG_INFO("[KAFKA PLUGIN]KafkaDisconnectedTopic = ~s~n", [KafkaDisconnectedTopic]),
+  % ?LOG_INFO("[KAFKA PLUGIN]KafkaSightmindEventMetadata = ~s~n", [KafkaSightmindEventMetadata]),
+  % ?LOG_INFO("[KAFKA PLUGIN]KafkaSightmindEventEvents = ~s~n", [KafkaSightmindEventEvents]),
+  % ?LOG_INFO("[KAFKA PLUGIN]KafkaSightmindEventCommand = ~s~n", [KafkaSightmindEventCommand]),
+  % ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventMetadata = ~s~n", [KafkaDmproEventMetadata]),
+  % ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventEvents = ~s~n", [KafkaDmproEventEvents]),
+  % ?LOG_INFO("[KAFKA PLUGIN]KafkaDmproEventCommand = ~s~n", [KafkaDmproEventCommand]),
+  % ?LOG_INFO("[KAFKA PLUGIN]KafkaChannelConnectedTopic = ~s~n", [KafkaChannelConnectedTopic]),
+  % ?LOG_INFO("[KAFKA PLUGIN]KafkaChannelDisconnectedTopic = ~s~n", [KafkaChannelDisconnectedTopic]),
 
   {ok, _} = application:ensure_all_started(brod),
   ok = brod:start_client(AddressList, emqx_repost_worker, KafkaConfig),
   ok = brod:start_producer(emqx_repost_worker, KafkaTopic, []),
-  ok = brod:start_producer(emqx_repost_worker, KafkaSettingsTopic, []),
-  ok = brod:start_producer(emqx_repost_worker, KafkaEventsTopic, []),
-  ok = brod:start_producer(emqx_repost_worker, KafkaMetricsTopic, []),
-  ok = brod:start_producer(emqx_repost_worker, KafkaConnectedTopic, []),
-  ok = brod:start_producer(emqx_repost_worker, KafkaDisconnectedTopic, []),
-  ok = brod:start_producer(emqx_repost_worker, KafkaSightmindEventMetadata, []),
-  ok = brod:start_producer(emqx_repost_worker, KafkaSightmindEventEvents, []),
-  ok = brod:start_producer(emqx_repost_worker, KafkaSightmindEventCommand, []),
-  ok = brod:start_producer(emqx_repost_worker, KafkaDmproEventMetadata, []),
-  ok = brod:start_producer(emqx_repost_worker, KafkaDmproEventEvents, []),
-  ok = brod:start_producer(emqx_repost_worker, KafkaDmproEventCommand, []),
-  ok = brod:start_producer(emqx_repost_worker, KafkaChannelConnectedTopic, []),
-  ok = brod:start_producer(emqx_repost_worker, KafkaChannelDisconnectedTopic, []),
+   % Iterate through our topics and dynamically subscribe instead of hardcoded
+  lists:foreach(fun(X) -> 
+                  ?LOG_INFO("[KAFKA PLUGIN]List Item : ~p~n", [X]),
+                  ok = do_connect_topic(element(2, X))
+                  end,
+                  KafkaTopics), 
+  % ok = brod:start_producer(emqx_repost_worker, KafkaSettingsTopic, []),
+  % ok = brod:start_producer(emqx_repost_worker, KafkaEventsTopic, []),
+  % ok = brod:start_producer(emqx_repost_worker, KafkaMetricsTopic, []),
+  % ok = brod:start_producer(emqx_repost_worker, KafkaConnectedTopic, []),
+  % ok = brod:start_producer(emqx_repost_worker, KafkaDisconnectedTopic, []),
+  % ok = brod:start_producer(emqx_repost_worker, KafkaSightmindEventMetadata, []),
+  % ok = brod:start_producer(emqx_repost_worker, KafkaSightmindEventEvents, []),
+  % ok = brod:start_producer(emqx_repost_worker, KafkaSightmindEventCommand, []),
+  % ok = brod:start_producer(emqx_repost_worker, KafkaDmproEventMetadata, []),
+  % ok = brod:start_producer(emqx_repost_worker, KafkaDmproEventEvents, []),
+  % ok = brod:start_producer(emqx_repost_worker, KafkaDmproEventCommand, []),
+  % ok = brod:start_producer(emqx_repost_worker, KafkaChannelConnectedTopic, []),
+  % ok = brod:start_producer(emqx_repost_worker, KafkaChannelDisconnectedTopic, []),
   ?LOG_INFO("Init emqx plugin kafka successfully.....~n"),
   ok.
 
@@ -612,76 +631,87 @@ unload() ->
 %       ?LOG_INFO("[KAFKA PLUGIN]MQTT topic prefix is not tlink = ~s~n",[Topic])
 %   end,
 %   ok.
-  
+
+get_key_value(MqttTopic,TopicPrefix,KafkaTopics) ->
+  case string:str(MqttTopic,TopicPrefix) of
+    0 -> 
+      TopicKafka = proplists:get_value(TopicPrefix, KafkaTopics)
+  end,
+  TopicKafka.
+
+do_get_topic(MqttTopic,ListTopics) ->
+
+
+    ok.
+
 get_duclo_kafka_topic(Topic) ->
-  ?LOG_INFO("[KAFKA PLUGIN] >> get_duclo_kafka_topic ~n"),
-  %?LOG_INFO("[KAFKA PLUGIN]Key = ~s~n", [Key]),
-  %?LOG_INFO("[KAFKA PLUGIN]Msg = ~s~n", [Message]),
-  %Topic = Message#message.topic,
-  ?LOG_INFO("[KAFKA PLUGIN]Topic = ~p~n", [Topic]),
+
+  % Let's get the prefix so we only send kafka messages from devices
   TopicPrefix = string:left(binary_to_list(Topic),2),
   TlinkFlag = string:equal(TopicPrefix, <<"d/">>),
-  TopicKafka = "0",
   if
     TlinkFlag == true ->
       TopicStr = binary_to_list(Topic),
-      ?LOG_INFO("[KAFKA PLUGIN]TopicStr = ~s~n", [TopicStr]),
-      SettingsIndex = string:str(TopicStr,"d/settings"),
-      EventsIndex = string:str(TopicStr,"d/events"),
-      MetricsIndex = string:str(TopicStr,"d/metrics"),
-      SightMindMetadataIndex = string:str(TopicStr,"d/sm-metadata"),
-      SightMindEventIndex = string:str(TopicStr,"d/sm-event"),
-      SightMindCommandIndex = string:str(TopicStr,"d/sm-command"),
-      DmproMetadataIndex = string:str(TopicStr,"d/dm-metadata"),
-      DmproEventIndex = string:str(TopicStr,"d/dm-event"),
-      DmproCommandIndex = string:str(TopicStr,"d/dm-command"),
-      ChannelConnIndex = string:str(TopicStr,"d/ch/conn"),
-      ChannelDisconnIndex = string:str(TopicStr,"d/ch/disconn"), 
-      ?LOG_INFO("[KAFKA PLUGIN]Determining Kafka Index = ~p~n", [ChannelConnIndex]),
+      {ok, KafkaTopics} =  application:get_env(emqx_plugin_kafka, connect_kafka_topics),
+      % {PubTopic, Start, Length} = regexp:match("^d[^/]*/", TopicStr),
+      % ?LOG_INFO("[PLUGIN KAFKA]Regex result = ~s", [PubTopic]),
+
+      SettingsStr = "d/settings",
+      SettingsIndex = string:str(TopicStr,SettingsStr),
+      EventsStr = "d/events",
+      EventsIndex = string:str(TopicStr,EventsStr),
+      MetricsStr = "d/metrics",
+      MetrixIndex = string:str(TopicStr,MetricsStr),
+      ChConnectedStr = "d/ch/conn",
+      ChConnectedIndex = string:str(TopicStr,ChConnectedStr),
+      ChDisconnectedStr = "d/ch/disconn",
+      ChDisconnectedIndex = string:str(TopicStr,ChDisconnectedStr),
       if
-        SettingsIndex /= 0 ->
-          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_settings);
-        MetricsIndex /= 0 ->
-          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_metrics);
-        EventsIndex /= 0 ->
-          {ok,TopicKafka} =application:get_env(emqx_plugin_kafka, topic_events);
-        SightMindMetadataIndex /= 0 ->
-          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_sightmind_event_metadata);
-        SightMindEventIndex /= 0 ->
-          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_sightmind_event_events);
-        SightMindCommandIndex /= 0 ->
-          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_sightmind_event_command);
-        DmproMetadataIndex /= 0 ->
-          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_dmpro_event_metadata);
-        DmproEventIndex /= 0 ->
-          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_dmpro_event_events);
-        DmproCommandIndex /= 0 ->
-          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_dmpro_event_command);
-        ChannelConnIndex /= 0 ->
-          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_channel_connected);
-        ChannelDisconnIndex /= 0 ->
-          {ok,TopicKafka} = application:get_env(emqx_plugin_kafka, topic_channel_disconnected)
-      end,
-      ?LOG_INFO("[KAFKA PLUGIN]Handling TopicKafka = ~p~n", [TopicKafka]);
+        SettingsIndex /= 0->
+          TopicKafka = proplists:get_value(SettingsStr, KafkaTopics);
+        EventsIndex /= 0->
+          TopicKafka = proplists:get_value(EventsStr, KafkaTopics);
+        MetrixIndex /= 0->
+          TopicKafka = proplists:get_value(MetricsStr, KafkaTopics);
+        ChConnectedIndex /= 0->
+          TopicKafka = proplists:get_value(ChConnectedStr, KafkaTopics);
+        ChDisconnectedIndex /= 0->
+          % Y= proplists:get_value("d/ch/disconn", KafkaTopics),
+          % ?LOG_INFO("[KAFKA PLUGIN]d/ch/disconn = ~s", [Y]),
+          % Z= proplists:get_value(ChDisconnectedStr, KafkaTopics),
+          % ?LOG_INFO("[KAFKA PLUGIN]ChDisconnectedStr = ~s", [Z]),
+          % ?LOG_INFO("[KAFKA PLUGIN]ChDisconnectedStr = ~s", [ChDisconnectedStr]),
+          TopicKafka = proplists:get_value(ChDisconnectedStr, KafkaTopics),
+          ?LOG_INFO("[KAFKA PLUGIN]ChDisconnectedStr: ~s = ~s", [ChDisconnectedStr,TopicKafka]);
+        true ->
+          TopicKafka = undefined                                         
+
+      % case regexp:match("^d[^/]*/", TopicStr) of
+      %   {PubTopic,Start,Length} ->
+      %     TopicKafka = proplists:get_value(PubTopic, KafkaTopics)
+      % end;
+      end;
     TlinkFlag == false ->
-      ?LOG_INFO("[KAFKA PLUGIN]MQTT topic prefix is not tlink = ~p~n",[Topic])
+      ?LOG_INFO("[KAFKA PLUGIN]MQTT topic prefix is not tlink = ~p~n",[Topic]),
+      TopicKafka = undefined
   end,
-  ?LOG_INFO("[KAFKA PLUGIN]Handling TopicKafka = ~p~n", [TopicKafka]),
   TopicKafka.
 
 produce_kafka_payload(Key, Topic, From, Message) ->
-  {ok,TopicKafka} = get_duclo_kafka_topic(Topic),
-  ?LOG_INFO("[KAFKA PLUGIN]Handling Topic = ~s~n", [TopicKafka]),
+  TopicKafka = get_duclo_kafka_topic(Topic),
   case TopicKafka of
-      "0" -> ?LOG_INFO("[KAFKA PLUGIN]Not handling topic. = ~s~n",[Message]);
-      _ -> produce_kafka_payload(Key, TopicKafka, Message)
-  end.
+      undefined -> ?LOG_INFO("[KAFKA PLUGIN]Not handling topic. = ~p~n",[Topic]);
+      _ -> 
+        ?LOG_INFO("[KAFKA PLUGIN]Handling Topic = ~s~n", [TopicKafka]),
+        produce_kafka_payload(Key, TopicKafka, Message)
+  end,
+  ok.
 
 produce_kafka_payload(Key, Topic, Message) ->
   %Topic = get_kafka_topic(),
-  ?LOG_INFO("[KAFKA PLUGIN]TopicKafka topic = ~s~n", [Topic]),
+  %?LOG_INFO("[KAFKA PLUGIN]TopicKafka topic = ~s~n", [Topic]),
   {ok, MessageBody} = emqx_json:safe_encode(Message),
-  ?LOG_INFO("[KAFKA PLUGIN]Message = ~s~n",[MessageBody]),
+  ?LOG_INFO("[KAFKA PLUGIN]Publishing Message = [[~s]] to Kafka Topic = ~s~n",[MessageBody,Topic]),
   Payload = iolist_to_binary(MessageBody),
   brod:produce_cb(emqx_repost_worker, Topic, hash, Key, Payload, fun(_,_) -> ok end),
   ok.
