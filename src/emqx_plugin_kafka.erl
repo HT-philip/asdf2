@@ -548,14 +548,15 @@ format_payload(Message) ->
   % ?LOG_INFO("[KAFKA PLUGIN]Tail= ~s , RawType= ~s~n",[Tail,RawType]),
   ClientId = Message#message.from,
   Content = transform_payload(Message#message.payload),
-  Payload = [{action, message_publish},
-    {device_id, ClientId},
-    {username, Username},
-    {topic, Topic},
-    {payload, Content},
-    {ts, Message#message.timestamp}],
+  % Not needed since backend is only expecting the message sent by the device
+  % Payload = [{action, message_publish},
+  %   {device_id, ClientId},
+  %   {username, Username},
+  %   {topic, Topic},
+  %   {payload, Content},
+  %   {ts, Message#message.timestamp}],
 
-  {ok, ClientId, Payload}.
+  {ok, ClientId, Content}.
 
 
 %% Called when the plugin application stop
